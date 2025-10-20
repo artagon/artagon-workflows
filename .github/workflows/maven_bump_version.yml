@@ -1,0 +1,135 @@
+name: Bump Maven Version (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        description: 'Java version to use'
+        required: false
+        type: string
+        default: '25'
+      java-distribution:
+        description: 'Java distribution'
+        required: false
+        type: string
+        default: 'temurin'
+      new-version:
+        description: 'New SNAPSHOT version (e.g., 1.0.9-SNAPSHOT)'
+        required: true
+        type: string
+      branch:
+        description: 'Branch to update (default: main)'
+        required: false
+        type: string
+        default: 'main'
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate version format
+        run: |
+          VERSION="${{ inputs.new-version }}"
+          echo "New version: $VERSION"
+
+          if [[ "$VERSION" != *-SNAPSHOT ]]; then
+            echo "❌ ERROR: Version must end with -SNAPSHOT"
+            echo ""
+            echo "Provided version: $VERSION"
+            echo "Expected format: X.Y.Z-SNAPSHOT"
+            echo ""
+            echo "Main branch must always have SNAPSHOT versions."
+            echo "Release versions are only on release-* branches."
+            exit 1
+          fi
+
+          echo "✅ Version format is valid: $VERSION"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ inputs.java-version }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: ${{ inputs.java-distribution }}
+          cache: 'maven'
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Validate branch
+        run: |
+          BRANCH="${{ inputs.branch }}"
+          CURRENT_BRANCH="$(git branch --show-current)"
+
+          echo "Target branch: $BRANCH"
+          echo "Current branch: $CURRENT_BRANCH"
+
+          if [[ "$CURRENT_BRANCH" != "$BRANCH" ]]; then
+            echo "❌ ERROR: Not on expected branch"
+            exit 1
+          fi
+
+          if [[ "$BRANCH" == release-* ]]; then
+            echo "⚠️  WARNING: Bumping version on a release branch"
+            echo "Release branches should typically stay at their release version."
+            echo "Are you sure you want to do this?"
+          fi
+
+          echo "✅ On correct branch: $BRANCH"
+
+      - name: Get current version
+        id: current-version
+        run: |
+          CURRENT=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT"
+
+      - name: Update version
+        run: |
+          NEW_VERSION="${{ inputs.new-version }}"
+          CURRENT_VERSION="${{ steps.current-version.outputs.current }}"
+
+          echo "Updating version:"
+          echo "  From: $CURRENT_VERSION"
+          echo "  To:   $NEW_VERSION"
+
+          mvn versions:set -DnewVersion="$NEW_VERSION" -DgenerateBackupPoms=false
+
+          if [ -f pom.xml.versionsBackup ]; then
+            rm pom.xml.versionsBackup
+          fi
+
+          git add .
+          git commit -m "chore: bump version to $NEW_VERSION
+
+Previous version: $CURRENT_VERSION
+Updated by: GitHub Actions workflow"
+
+          echo "✅ Version updated successfully"
+
+      - name: Push changes
+        run: |
+          BRANCH="${{ inputs.branch }}"
+          echo "Pushing to branch: $BRANCH"
+
+          git push origin "$BRANCH"
+
+          echo "✅ Changes pushed successfully"
+          echo ""
+          echo "Updated $BRANCH to version ${{ inputs.new-version }}"
+
+      - name: Summary
+        run: |
+          echo "## ✅ Version Bump Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ inputs.branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Previous version:** ${{ steps.current-version.outputs.current }}" >> $GITHUB_STEP_SUMMARY
+          echo "**New version:** ${{ inputs.new-version }}" >> $GITHUB_STEP_SUMMARY

@@ -13,15 +13,6 @@ on:
         required: false
         type: string
         default: 'temurin'
-      release-version:
-        description: 'Release version (e.g., 1.0.0)'
-        required: true
-        type: string
-      next-snapshot-version:
-        description: 'Next snapshot version (leave empty for auto-increment)'
-        required: false
-        type: string
-        default: ''
       deploy-profile:
         description: 'Maven profile for deployment'
         required: false
@@ -31,7 +22,7 @@ on:
         description: 'Automatically release from Nexus staging'
         required: false
         type: boolean
-        default: false
+        default: true
       create-github-release:
         description: 'Create GitHub release'
         required: false
@@ -57,14 +48,38 @@ on:
       release-tag:
         description: 'The git tag created for the release'
         value: ${{ jobs.release.outputs.tag }}
+      release-version:
+        description: 'The release version'
+        value: ${{ jobs.release.outputs.version }}
 
 jobs:
   release:
     runs-on: ubuntu-latest
     outputs:
-      tag: v${{ inputs.release-version }}
+      tag: ${{ steps.create-tag.outputs.tag }}
+      version: ${{ steps.set-release-version.outputs.release-version }}
 
     steps:
+      - name: Validate release branch
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          echo "Current branch: $BRANCH"
+
+          if [[ "$BRANCH" != release-* ]]; then
+            echo "❌ ERROR: Releases must be created from release-* branches"
+            echo ""
+            echo "Current branch: $BRANCH"
+            echo ""
+            echo "To create a release:"
+            echo "  1. Ensure main branch has next SNAPSHOT version (e.g., 1.0.9-SNAPSHOT)"
+            echo "  2. Create release branch: git checkout -b release-1.0.8 <commit-at-1.0.8-SNAPSHOT>"
+            echo "  3. Push release branch: git push origin release-1.0.8"
+            echo "  4. Trigger this workflow from the release-1.0.8 branch"
+            exit 1
+          fi
+
+          echo "✅ Running from release branch: $BRANCH"
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -92,25 +107,40 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
 
-      - name: Calculate next snapshot version
-        id: next-version
+      - name: Validate SNAPSHOT version
         run: |
-          if [ -n "${{ inputs.next-snapshot-version }}" ]; then
-            NEXT_VERSION="${{ inputs.next-snapshot-version }}"
-          else
-            RELEASE_VERSION="${{ inputs.release-version }}"
-            IFS='.' read -ra VERSION_PARTS <<< "$RELEASE_VERSION"
-            PATCH=$((${VERSION_PARTS[2]} + 1))
-            NEXT_VERSION="${VERSION_PARTS[0]}.${VERSION_PARTS[1]}.$PATCH-SNAPSHOT"
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "Current POM version: $VERSION"
+
+          if [[ "$VERSION" != *-SNAPSHOT ]]; then
+            echo "❌ ERROR: Release branch must start with a SNAPSHOT version"
+            echo ""
+            echo "Current version: $VERSION"
+            echo ""
+            echo "The release process works as follows:"
+            echo "  1. Release branch should be created from main with SNAPSHOT version"
+            echo "  2. This workflow removes -SNAPSHOT to create release version"
+            echo "  3. Release branch stays at release version for hotfixes"
+            echo "  4. Main branch continues with next SNAPSHOT version"
+            exit 1
           fi
-          echo "next-version=$NEXT_VERSION" >> $GITHUB_OUTPUT
-          echo "Next snapshot version: $NEXT_VERSION"
+
+          echo "✅ Version is SNAPSHOT: $VERSION"
 
       - name: Set release version
+        id: set-release-version
         run: |
-          mvn versions:set -DnewVersion=${{ inputs.release-version }} -DgenerateBackupPoms=false
+          SNAPSHOT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          RELEASE_VERSION="${SNAPSHOT_VERSION%-SNAPSHOT}"
+
+          echo "release-version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
+          echo "Releasing version: $RELEASE_VERSION"
+
+          mvn versions:set -DnewVersion="$RELEASE_VERSION" -DgenerateBackupPoms=false
           git add .
-          git commit -m "chore: release version ${{ inputs.release-version }}"
+          git commit -m "chore: release version $RELEASE_VERSION"
+
+          echo "✅ Set release version: $RELEASE_VERSION"
 
       - name: Build and deploy release
         env:
@@ -123,19 +153,33 @@ jobs:
             --batch-mode --no-transfer-progress
 
       - name: Create git tag
+        id: create-tag
         run: |
-          git tag -a "v${{ inputs.release-version }}" -m "Release ${{ inputs.release-version }}"
+          RELEASE_VERSION="${{ steps.set-release-version.outputs.release-version }}"
+          TAG="v$RELEASE_VERSION"
 
-      - name: Set next snapshot version
-        run: |
-          mvn versions:set -DnewVersion=${{ steps.next-version.outputs.next-version }} -DgenerateBackupPoms=false
-          git add .
-          git commit -m "chore: prepare for next development iteration"
+          git tag -a "$TAG" -m "Release $RELEASE_VERSION"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "✅ Created tag: $TAG"
 
-      - name: Push changes and tags
+      - name: Push release branch and tag
         run: |
-          git push origin main
-          git push origin "v${{ inputs.release-version }}"
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          TAG="${{ steps.create-tag.outputs.tag }}"
+
+          echo "Pushing release branch: $BRANCH"
+          git push origin "$BRANCH"
+
+          echo "Pushing release tag: $TAG"
+          git push origin "$TAG"
+
+          echo ""
+          echo "✅ Release branch and tag pushed successfully"
+          echo "📦 Branch: $BRANCH"
+          echo "🏷️  Tag: $TAG"
+          echo ""
+          echo "Note: Release branch will remain at release version for hotfixes."
+          echo "Main branch should be updated separately to next SNAPSHOT version."
 
       - name: Release from Nexus staging
         if: inputs.auto-release-nexus
@@ -148,26 +192,27 @@ jobs:
 
       - name: Create GitHub Release
         if: inputs.create-github-release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
         with:
-          tag_name: v${{ inputs.release-version }}
-          release_name: Release ${{ inputs.release-version }}
+          tag_name: ${{ steps.create-tag.outputs.tag }}
+          name: Release ${{ steps.set-release-version.outputs.release-version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
           body: |
-            ## Release ${{ inputs.release-version }}
+            ## Release ${{ steps.set-release-version.outputs.release-version }}
 
             Maven Central coordinates:
             ```xml
             <dependency>
                 <groupId>org.artagon</groupId>
                 <artifactId>artagon-bom</artifactId>
-                <version>${{ inputs.release-version }}</version>
+                <version>${{ steps.set-release-version.outputs.release-version }}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
             ```
 
             Artifacts will sync to Maven Central in 2-4 hours.
-          draft: false
-          prerelease: false
