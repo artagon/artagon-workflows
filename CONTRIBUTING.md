@@ -260,14 +260,104 @@ A change is breaking if it:
 4. Update all examples
 5. Announce to users
 
-### Release Process
+### Release Branch Strategy
 
-After merging a PR, maintainers will:
+**IMPORTANT**: This repository uses a release branch strategy:
 
-1. Update CHANGELOG.md
-2. Create git tag: `git tag v1.2.0`
-3. Push tag: `git push origin v1.2.0`
-4. Create GitHub release with notes
+- **`main` branch**: Development branch, always has SNAPSHOT versions
+- **`release-*` branches**: Stable release branches with release versions (no SNAPSHOT)
+- **Tags**: Created on release branches
+
+**Branch Versions:**
+```
+main: Always SNAPSHOT (e.g., 1.0.9-SNAPSHOT, 2.0.0-SNAPSHOT)
+release-1.0.8: 1.0.8 (no SNAPSHOT)
+release-2.0.0: 2.0.0 (no SNAPSHOT)
+```
+
+### Release Process for Maintainers
+
+When ready to create a new release:
+
+#### 1. Ensure Main is at Next SNAPSHOT
+
+```bash
+# Check current version on main
+git checkout main
+# Should show next SNAPSHOT version (e.g., 1.0.9-SNAPSHOT)
+```
+
+If not, bump the version:
+```bash
+# Bump to next SNAPSHOT version
+git checkout main
+# Update version in relevant files
+git commit -m "chore: bump main to 1.0.9-SNAPSHOT"
+git push origin main
+```
+
+#### 2. Create Release Branch
+
+```bash
+# Create release branch from commit at desired SNAPSHOT version
+# Example: releasing 1.0.8 from a commit where version is 1.0.8-SNAPSHOT
+git checkout -b release-1.0.8 <commit-at-1.0.8-SNAPSHOT>
+git push origin release-1.0.8
+```
+
+#### 3. Trigger Release Workflow
+
+Navigate to GitHub Actions and run the release workflow from the release branch. The workflow will:
+- Remove `-SNAPSHOT` from version (1.0.8-SNAPSHOT → 1.0.8)
+- Commit the release version
+- Create tag `v1.0.8`
+- Push release branch and tag
+- Create GitHub release
+
+#### 4. Release Branch Lifecycle
+
+**Keep release branches** - they're used for hotfixes:
+```
+release-1.0.8: 1.0.8 (kept for 1.0.x hotfixes)
+release-1.1.0: 1.1.0 (kept for 1.1.x hotfixes)
+release-2.0.0: 2.0.0 (kept for 2.0.x hotfixes)
+```
+
+### Hotfix Process
+
+To release a hotfix on an existing release:
+
+```bash
+# 1. Checkout release branch
+git checkout release-1.0.8
+
+# 2. Make fixes
+git commit -m "fix: critical security issue"
+
+# 3. Create hotfix tag
+git tag -a v1.0.8.1 -m "Security hotfix 1.0.8.1"
+
+# 4. Push
+git push origin release-1.0.8 --tags
+
+# 5. Cherry-pick to main if needed
+git checkout main
+git cherry-pick <fix-commit-sha>
+git push origin main
+```
+
+### Version Management
+
+**For Maven Projects:**
+- Main branch POM versions must end with `-SNAPSHOT`
+- Release branches remove the `-SNAPSHOT` suffix
+
+**For Workflows Repository:**
+- Main branch is always development
+- Releases use git tags (v1.2.0, v2.0.0, etc.)
+- Major version tags (v1, v2) point to latest in that series
+
+See **[RELEASE.md](RELEASE.md)** for complete release documentation.
 
 ## Workflow Best Practices
 

@@ -116,8 +116,48 @@ uses: artagon/artagon-workflows/.github/workflows/maven-ci.yml@v1.2.0
 uses: artagon/artagon-workflows/.github/workflows/maven-ci.yml@main
 ```
 
+## Release Strategy
+
+Artagon projects follow a **release branch strategy** for stable, predictable releases:
+
+### Branch Structure
+
+- **`main` branch**: Always has SNAPSHOT versions (e.g., `1.0.9-SNAPSHOT`)
+- **`release-X.Y.Z` branches**: Have release versions without SNAPSHOT (e.g., `1.0.8`)
+- **Tags**: Created on release branches (e.g., `v1.0.8`)
+
+### Release Process
+
+```bash
+# 1. Ensure main is at next SNAPSHOT version
+main: 1.0.9-SNAPSHOT
+
+# 2. Create release branch from commit at desired SNAPSHOT
+git checkout -b release-1.0.8 <commit-at-1.0.8-SNAPSHOT>
+git push origin release-1.0.8
+
+# 3. Trigger release workflow from release branch
+# The workflow removes -SNAPSHOT and creates v1.0.8 tag
+
+# 4. Result
+main:          1.0.9-SNAPSHOT (unchanged)
+release-1.0.8: 1.0.8          (frozen for hotfixes)
+tag v1.0.8:    created
+```
+
+### Key Principles
+
+- ✅ Main branch **always** has SNAPSHOT versions
+- ✅ Release branches **never** have SNAPSHOT versions
+- ✅ Releases are **only** created from `release-*` branches
+- ✅ Release branches are **kept** for hotfixes (not deleted)
+- ✅ Tags are created on release branches
+
+For detailed instructions, see **[RELEASE.md](RELEASE.md)**.
+
 ## Documentation
 
+- **[RELEASE.md](RELEASE.md)** - Complete release process guide
 - **[Maven Workflows](docs/MAVEN.md)** - Detailed Maven workflow documentation
 - **[C/C++ Workflows](docs/CPP.md)** - C/C++ workflow documentation
 - **[Bazel Workflows](docs/BAZEL.md)** - Bazel workflow documentation
