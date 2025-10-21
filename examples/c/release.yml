@@ -1,0 +1,43 @@
+# Example: C Project Release Workflow
+#
+# This workflow creates releases using tag-based strategy.
+# Copy this to your project's .github/workflows/release.yml
+#
+# Tag-Based Release Strategy:
+# - Main branch: Always buildable, development version
+# - Tags: Primary release mechanism (e.g., v1.2.3)
+# - Maintenance branches: For long-term support (e.g., maint-1.2)
+#
+# Usage:
+#   1. Update version in CMakeLists.txt to 1.2.3
+#   2. Update CHANGELOG.md
+#   3. Commit changes
+#   4. Create tag: git tag -a v1.2.3 -m "Release 1.2.3"
+#   5. Push: git push origin main --tags
+#
+# For complete C release strategy, see:
+# https://github.com/artagon/artagon-workflows/blob/main/docs/RELEASE_C.md
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    name: Create Release
+    uses: artagon/artagon-workflows/.github/workflows/c-release.yml@v1
+    with:
+      cmake-version: '3.20'
+      build-type: 'Release'
+      create-source-tarball: true
+      create-binary-packages: true
+      run-tests: true
+    secrets: inherit

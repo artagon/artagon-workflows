@@ -1,0 +1,30 @@
+# Example: C Project CI Workflow
+#
+# This workflow runs continuous integration checks for C projects using CMake.
+# Copy this to your project's .github/workflows/ci.yml
+#
+# For complete C release strategy, see:
+# https://github.com/artagon/artagon-workflows/blob/main/docs/RELEASE_C.md
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'maint-*'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    uses: artagon/artagon-workflows/.github/workflows/c-ci.yml@v1
+    with:
+      cmake-version: '3.20'
+      build-type: 'Release'
+      enable-sanitizers: true
+      run-valgrind: true
+      run-cppcheck: true
+    secrets: inherit

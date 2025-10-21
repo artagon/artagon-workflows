@@ -1,0 +1,34 @@
+# Example: Bazel Project Release Workflow
+#
+# This workflow creates releases for Bazel projects.
+# Copy this to your project's .github/workflows/release.yml
+#
+# Usage:
+#   1. Update version in MODULE.bazel or WORKSPACE
+#   2. Update CHANGELOG.md
+#   3. Commit changes
+#   4. Create tag: git tag -a v1.2.3 -m "Release 1.2.3"
+#   5. Push: git push origin main --tags
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    name: Create Release
+    uses: artagon/artagon-workflows/.github/workflows/bazel-release.yml@v1
+    with:
+      bazel-version: '7.0.0'
+      bazel-configs: 'release'
+      create-source-tarball: true
+      run-tests: true
+    secrets: inherit

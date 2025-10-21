@@ -1,0 +1,53 @@
+# Example: C++ Project Release Workflow
+#
+# This workflow creates releases using release branch strategy with LTS support.
+# Copy this to your project's .github/workflows/release.yml
+#
+# Release Branch Strategy:
+# - Main branch: Development (C++20/23 features)
+# - Release branches: Stable releases (e.g., release-2.1)
+# - LTS branches: Long-term support (e.g., lts-2.0)
+# - Tags: Version tags (e.g., v2.1.3)
+#
+# Usage:
+#   1. Create release branch: git checkout -b release-2.1
+#   2. Update version in CMakeLists.txt to 2.1.0
+#   3. Update CHANGELOG.md
+#   4. Push branch: git push origin release-2.1
+#   5. Run this workflow
+#   6. For LTS: git checkout -b lts-2.0 release-2.0
+#
+# For complete C++ release strategy, see:
+# https://github.com/artagon/artagon-workflows/blob/main/docs/RELEASE_CPP.md
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      create-lts-branch:
+        description: 'Create LTS branch from this release'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    name: Create Release
+    uses: artagon/artagon-workflows/.github/workflows/cpp-release.yml@v1
+    with:
+      cmake-version: '3.20'
+      cxx-standard: '20'  # Or 17, 23
+      build-type: 'Release'
+      create-source-tarball: true
+      create-binary-packages: true
+      verify-abi-compatibility: true
+      run-benchmarks: true
+    secrets: inherit

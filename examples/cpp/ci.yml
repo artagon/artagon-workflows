@@ -1,0 +1,32 @@
+# Example: C++ Project CI Workflow
+#
+# This workflow runs continuous integration checks for C++ projects.
+# Copy this to your project's .github/workflows/ci.yml
+#
+# For complete C++ release strategy, see:
+# https://github.com/artagon/artagon-workflows/blob/main/docs/RELEASE_CPP.md
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'release-*'
+      - 'lts-*'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    uses: artagon/artagon-workflows/.github/workflows/cpp-ci.yml@v1
+    with:
+      cmake-version: '3.20'
+      cxx-standard: '20'  # Or 17, 23
+      build-type: 'Release'
+      enable-sanitizers: true
+      run-clang-tidy: true
+      run-cppcheck: true
+    secrets: inherit

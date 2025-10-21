@@ -1,5 +1,12 @@
-# Example Snapshot Deployment Workflow
+# Example: Maven Snapshot Deployment Workflow
+#
+# This workflow deploys SNAPSHOT versions to OSSRH snapshot repository.
 # Copy this to your project's .github/workflows/snapshot-deploy.yml
+#
+# IMPORTANT: Only runs on main branch with SNAPSHOT versions.
+#
+# For complete Java/Maven release strategy, see:
+# https://github.com/artagon/artagon-workflows/blob/main/docs/RELEASE_JAVA.md
 
 name: Deploy Snapshot
 
@@ -9,15 +16,18 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   deploy-snapshot:
     name: Deploy Snapshot to OSSRH
     if: github.ref == 'refs/heads/main'
-    uses: artagon/artagon-common/.github/workflows/maven_deploy.yml@main
+    uses: artagon/artagon-workflows/.github/workflows/maven_deploy.yml@v1
     with:
-      java-version: '25'
-      deploy-profile: 'ossrh-deploy,artagon-oss-release'
-      skip-tests: true
+      java-version: '21'  # Or 17, 25
+      skip-tests: false   # Set to true to skip tests (not recommended)
     secrets:
       OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
       OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}

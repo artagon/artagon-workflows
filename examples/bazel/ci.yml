@@ -1,0 +1,26 @@
+# Example: Bazel Project CI Workflow
+#
+# This workflow runs continuous integration checks for Bazel projects.
+# Copy this to your project's .github/workflows/ci.yml
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'release-*'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    uses: artagon/artagon-workflows/.github/workflows/bazel-ci.yml@v1
+    with:
+      bazel-version: '7.0.0'
+      bazel-configs: 'release,debug'
+      run-tests: true
+      cache-enabled: true
+    secrets: inherit

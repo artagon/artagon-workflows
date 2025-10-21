@@ -1,40 +1,54 @@
-# Example Release Workflow
+# Example: Maven Release Workflow
+#
+# This workflow creates releases using the release branch strategy.
 # Copy this to your project's .github/workflows/release.yml
+#
+# IMPORTANT: This workflow must be run from a release-* branch.
+#
+# Release Branch Strategy:
+# - Main branch: Always at SNAPSHOT version (e.g., 1.0.9-SNAPSHOT)
+# - Release branch: Created from main, SNAPSHOT removed during release
+# - Example:
+#   1. Ensure main is at 1.0.9-SNAPSHOT
+#   2. Create release-1.0.8 from commit at 1.0.8-SNAPSHOT
+#   3. Run this workflow from release-1.0.8 branch
+#   4. Workflow removes -SNAPSHOT and creates v1.0.8 tag
+#
+# For complete Java/Maven release strategy, see:
+# https://github.com/artagon/artagon-workflows/blob/main/docs/RELEASE_JAVA.md
 
 name: Release
 
 on:
   workflow_dispatch:
     inputs:
-      release-version:
-        description: 'Release version (e.g., 1.0.0)'
-        required: true
-        type: string
-      next-snapshot-version:
-        description: 'Next snapshot version (leave empty for auto-increment)'
-        required: false
-        type: string
       auto-release-nexus:
         description: 'Automatically release from Nexus staging'
         required: false
         type: boolean
-        default: false
+        default: true
+      create-github-release:
+        description: 'Create GitHub release'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  packages: write
 
 jobs:
   release:
     name: Release to Maven Central
+    # Enforces release branch strategy
     if: startsWith(github.ref, 'refs/heads/release-')
-    uses: artagon/artagon-common/.github/workflows/maven_release.yml@main
+    uses: artagon/artagon-workflows/.github/workflows/maven_release.yml@v1
     with:
-      java-version: '25'
-      release-version: ${{ github.event.inputs.release-version }}
-      next-snapshot-version: ${{ github.event.inputs.next-snapshot-version }}
-      deploy-profile: 'ossrh-deploy,artagon-oss-release'
-      auto-release-nexus: ${{ github.event.inputs.auto-release-nexus }}
-      create-github-release: true
+      java-version: '21'  # Or 17, 25
+      auto-release-nexus: ${{ inputs.auto-release-nexus }}
+      create-github-release: ${{ inputs.create-github-release }}
     secrets:
       OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
       OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
       GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
       GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,7 +1,14 @@
-# Example Release Branch Workflow
+# Example: Release Branch Validation Workflow
+#
+# This workflow validates release branches and optionally deploys to staging.
 # Copy this to your project's .github/workflows/release-branch.yml
+#
+# Purpose: Validate release branch before triggering actual release.
+#
+# For complete Java/Maven release strategy, see:
+# https://github.com/artagon/artagon-workflows/blob/main/docs/RELEASE_JAVA.md
 
-name: Release Branch
+name: Release Branch Validation
 
 on:
   push:
@@ -20,9 +27,10 @@ permissions:
   packages: write
 
 jobs:
-  release-branch:
+  validate-release-branch:
     name: Validate Release Branch
-    uses: artagon/artagon-common/.github/workflows/maven_release_branch.yml@main
+    uses: artagon/artagon-workflows/.github/workflows/maven_release_branch.yml@v1
     with:
-      deploy-to-staging: ${{ (github.event.inputs.deploy-to-staging || 'false') == 'true' }}
+      java-version: '21'  # Or 17, 25
+      deploy-to-staging: ${{ inputs.deploy-to-staging || false }}
     secrets: inherit

@@ -1,0 +1,116 @@
+# Example: Rust Project Release Workflow
+#
+# This workflow publishes Rust crates to crates.io using trunk-based development.
+# Copy this to your project's .github/workflows/release.yml
+#
+# Trunk-Based Development Strategy:
+# - Main branch: Always compilable, development version
+# - Tags: Trigger releases to crates.io (e.g., v1.2.3)
+# - LTS branches (optional): For frameworks (e.g., lts-1.x)
+#
+# Usage:
+#   1. Update version in Cargo.toml to 1.2.3
+#   2. Update CHANGELOG.md
+#   3. Commit: git commit -am "chore: bump version to 1.2.3"
+#   4. Tag: git tag -a v1.2.3 -m "Release 1.2.3"
+#   5. Push: git push origin main --tags
+#
+# IMPORTANT: Releases to crates.io are PERMANENT and IMMUTABLE.
+#
+# For complete Rust release strategy, see:
+# https://github.com/artagon/artagon-workflows/blob/main/docs/RELEASE_RUST.md
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  pre-release-checks:
+    name: Pre-Release Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Run clippy
+        run: cargo clippy --all-features -- -D warnings
+
+      - name: Run tests
+        run: cargo test --all-features
+
+      - name: Check documentation
+        run: cargo doc --all-features --no-deps
+
+      - name: Verify MSRV
+        run: |
+          MSRV=$(cargo read-manifest | jq -r '.rust_version // "1.70"')
+          rustup install $MSRV
+          cargo +$MSRV check --all-features
+
+      - name: Security audit
+        run: |
+          cargo install cargo-audit
+          cargo audit
+
+      - name: Dry run publish
+        run: cargo publish --dry-run
+
+  publish-crates-io:
+    name: Publish to crates.io
+    needs: pre-release-checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish
+
+  create-github-release:
+    name: Create GitHub Release
+    needs: publish-crates-io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: v${{ steps.version.outputs.version }}
+          body: |
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/v${{ steps.version.outputs.version }}/CHANGELOG.md) for details.
+
+            Published to crates.io: https://crates.io/crates/${{ github.event.repository.name }}/${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false

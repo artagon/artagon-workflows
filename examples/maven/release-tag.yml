@@ -1,7 +1,16 @@
-# Example Tag Release Workflow
+# Example: Tag-Based Release Workflow
+#
+# This workflow publishes releases when a git tag is pushed.
 # Copy this to your project's .github/workflows/release-tag.yml
+#
+# Usage:
+#   git tag -a v1.0.8 -m "Release 1.0.8"
+#   git push origin v1.0.8
+#
+# For complete Java/Maven release strategy, see:
+# https://github.com/artagon/artagon-workflows/blob/main/docs/RELEASE_JAVA.md
 
-name: Release Tag
+name: Release from Tag
 
 on:
   push:
@@ -13,9 +22,10 @@ permissions:
   packages: write
 
 jobs:
-  publish:
-    name: Publish Release
-    uses: artagon/artagon-common/.github/workflows/maven_release_tag.yml@main
+  publish-release:
+    name: Publish Release from Tag
+    uses: artagon/artagon-workflows/.github/workflows/maven_release_tag.yml@v1
     with:
-      skip-tests: false
+      java-version: '21'  # Or 17, 25
+      skip-tests: false   # Set to true to skip tests (not recommended)
     secrets: inherit

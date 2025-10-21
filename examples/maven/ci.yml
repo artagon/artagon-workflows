@@ -1,5 +1,10 @@
-# Example CI Workflow
+# Example: Maven CI Workflow
+#
+# This workflow runs continuous integration checks on every push and pull request.
 # Copy this to your project's .github/workflows/ci.yml
+#
+# For complete Java/Maven release strategy, see:
+# https://github.com/artagon/artagon-workflows/blob/main/docs/RELEASE_JAVA.md
 
 name: CI
 
@@ -14,20 +19,21 @@ on:
       - 'release-*'
 
 jobs:
-  build:
+  build-and-test:
     name: Build and Test
-    uses: artagon/artagon-common/.github/workflows/maven_build.yml@main
+    uses: artagon/artagon-workflows/.github/workflows/maven-ci.yml@v1
     with:
-      java-version: '25'
-      run-tests: true
-      run-integration-tests: false
+      java-version: '21'  # Or 17, 25
+      cache-enabled: true
+    secrets: inherit
 
   security-scan:
     name: Security Scan
-    needs: build
-    uses: artagon/artagon-common/.github/workflows/maven_security_scan.yml@main
+    needs: build-and-test
+    uses: artagon/artagon-workflows/.github/workflows/maven_security_scan.yml@v1
     with:
       run-dependency-check: true
       run-ossindex-audit: true
       run-trivy-scan: true
       fail-on-severity: 'HIGH'
+    secrets: inherit
