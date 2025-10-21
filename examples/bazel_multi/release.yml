@@ -25,7 +25,7 @@ permissions:
 jobs:
   release:
     name: Create Release
-    uses: artagon/artagon-workflows/.github/workflows/bazel-release.yml@v1
+    uses: artagon/artagon-workflows/.github/workflows/bazel_multi_release.yml@v1
     with:
       bazel-version: '7.0.0'
       bazel-configs: 'release'

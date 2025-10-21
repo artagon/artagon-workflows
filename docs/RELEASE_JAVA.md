@@ -589,7 +589,7 @@ on:
 
 jobs:
   ci:
-    uses: artagon/artagon-workflows/.github/workflows/maven-ci.yml@v1
+    uses: artagon/artagon-workflows/.github/workflows/maven_ci.yml@v1
     secrets: inherit
 ```
 

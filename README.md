@@ -15,7 +15,7 @@ This repository contains production-ready, reusable GitHub Actions workflows tha
 
 ### Maven Workflows
 
-- **[maven-ci.yml](.github/workflows/maven-ci.yml)** - Continuous integration (build, test, verify)
+- **[maven_ci.yml](.github/workflows/maven_ci.yml)** - Continuous integration (build, test, verify)
 - **[maven-build.yml](.github/workflows/maven-build.yml)** - Build without deploy
 - **[maven-deploy.yml](.github/workflows/maven-deploy.yml)** - Deploy snapshots to OSSRH
 - **[maven-release.yml](.github/workflows/maven-release.yml)** - Full release process
@@ -27,15 +27,15 @@ This repository contains production-ready, reusable GitHub Actions workflows tha
 
 ### C/C++ Workflows
 
-- **[c-ci.yml](.github/workflows/c-ci.yml)** - C project CI with CMake
-- **[cpp-ci.yml](.github/workflows/cpp-ci.yml)** - C++ project CI with CMake
-- **[c-release.yml](.github/workflows/c-release.yml)** - C project release
-- **[cpp-release.yml](.github/workflows/cpp-release.yml)** - C++ project release
+- **[cmake_c_ci.yml](.github/workflows/cmake_c_ci.yml)** - C project CI with CMake
+- **[cmake_cpp_ci.yml](.github/workflows/cmake_cpp_ci.yml)** - C++ project CI with CMake
+- **[cmake_c_release.yml](.github/workflows/cmake_c_release.yml)** - C project release
+- **[cmake_cpp_release.yml](.github/workflows/cmake_cpp_release.yml)** - C++ project release
 
 ### Bazel Workflows
 
-- **[bazel-ci.yml](.github/workflows/bazel-ci.yml)** - Bazel project CI
-- **[bazel-release.yml](.github/workflows/bazel-release.yml)** - Bazel project release
+- **[bazel_multi_ci.yml](.github/workflows/bazel_multi_ci.yml)** - Bazel project CI
+- **[bazel_multi_release.yml](.github/workflows/bazel_multi_release.yml)** - Bazel project release
 
 ### Utility Workflows
 
@@ -57,7 +57,7 @@ on:
 
 jobs:
   ci:
-    uses: artagon/artagon-workflows/.github/workflows/maven-ci.yml@v1
+    uses: artagon/artagon-workflows/.github/workflows/maven_ci.yml@v1
     secrets: inherit
 ```
 
@@ -75,7 +75,7 @@ on:
 
 jobs:
   ci:
-    uses: artagon/artagon-workflows/.github/workflows/cpp-ci.yml@v1
+    uses: artagon/artagon-workflows/.github/workflows/cmake_cpp_ci.yml@v1
     with:
       cmake-options: '-DCMAKE_BUILD_TYPE=Release'
     secrets: inherit
@@ -95,7 +95,7 @@ on:
 
 jobs:
   ci:
-    uses: artagon/artagon-workflows/.github/workflows/bazel-ci.yml@v1
+    uses: artagon/artagon-workflows/.github/workflows/bazel_multi_ci.yml@v1
     with:
       bazel-configs: 'release,debug'
     secrets: inherit
@@ -107,13 +107,13 @@ Workflows are versioned using git tags. Pin to a specific version for stability:
 
 ```yaml
 # Pin to major version (recommended)
-uses: artagon/artagon-workflows/.github/workflows/maven-ci.yml@v1
+uses: artagon/artagon-workflows/.github/workflows/maven_ci.yml@v1
 
 # Pin to specific release
-uses: artagon/artagon-workflows/.github/workflows/maven-ci.yml@v1.2.0
+uses: artagon/artagon-workflows/.github/workflows/maven_ci.yml@v1.2.0
 
 # Use latest (not recommended for production)
-uses: artagon/artagon-workflows/.github/workflows/maven-ci.yml@main
+uses: artagon/artagon-workflows/.github/workflows/maven_ci.yml@main
 ```
 
 ## Release Strategy

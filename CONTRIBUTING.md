@@ -152,7 +152,7 @@ After approval, maintainers will merge the PR and create a release tag if approp
 
    jobs:
      ci:
-       uses: your-username/artagon-workflows/.github/workflows/maven-ci.yml@your-branch
+       uses: your-username/artagon-workflows/.github/workflows/maven_ci.yml@your-branch
        secrets: inherit
    ```
 

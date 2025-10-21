@@ -17,7 +17,7 @@ on:
 jobs:
   build-and-test:
     name: Build and Test
-    uses: artagon/artagon-workflows/.github/workflows/bazel-ci.yml@v1
+    uses: artagon/artagon-workflows/.github/workflows/bazel_multi_ci.yml@v1
     with:
       bazel-version: '7.0.0'
       bazel-configs: 'release,debug'

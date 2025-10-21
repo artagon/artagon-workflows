@@ -33,7 +33,7 @@ permissions:
 jobs:
   release:
     name: Create Release
-    uses: artagon/artagon-workflows/.github/workflows/c-release.yml@v1
+    uses: artagon/artagon-workflows/.github/workflows/cmake_c_release.yml@v1
     with:
       cmake-version: '3.20'
       build-type: 'Release'

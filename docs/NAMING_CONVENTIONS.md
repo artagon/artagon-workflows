@@ -21,12 +21,12 @@ Analysis of current naming strategy and proposed improvements for workflows and 
 **Observed patterns:**
 
 ```
-bazel-ci.yml                 (hyphen, lang implicit)
-bazel-release.yml            (hyphen, lang implicit)
-c-ci.yml                     (hyphen, buildsystem implicit)
-c-release.yml                (hyphen, buildsystem implicit)
-cpp-ci.yml                   (hyphen, buildsystem implicit)
-cpp-release.yml              (hyphen, buildsystem implicit)
+bazel_multi_ci.yml                 (hyphen, lang implicit)
+bazel_multi_release.yml            (hyphen, lang implicit)
+cmake_c_ci.yml                     (hyphen, buildsystem implicit)
+cmake_c_release.yml                (hyphen, buildsystem implicit)
+cmake_cpp_ci.yml                   (hyphen, buildsystem implicit)
+cmake_cpp_release.yml              (hyphen, buildsystem implicit)
 maven_build.yml              (underscore)
 maven_bump_version.yml       (underscore)
 maven_deploy.yml             (underscore)
@@ -35,7 +35,7 @@ maven_release_tag.yml        (underscore)
 maven_release.yml            (underscore)
 maven_security_scan.yml      (underscore)
 maven-central-release.yml    (hyphen)
-maven-ci.yml                 (hyphen)
+maven_ci.yml                 (hyphen)
 maven-github-release.yml     (hyphen)
 update-submodule.yml         (hyphen, utility)
 ```
@@ -47,9 +47,9 @@ update-submodule.yml         (hyphen, utility)
 - No clear rule for when to use which
 
 #### 2. **Missing Build System Context**
-- `c-ci.yml` doesn't indicate it uses CMake
-- `cpp-ci.yml` doesn't indicate it uses CMake
-- Users can't tell `c-ci.yml` from `bazel-c-ci.yml` without inspection
+- `cmake_c_ci.yml` doesn't indicate it uses CMake
+- `cmake_cpp_ci.yml` doesn't indicate it uses CMake
+- Users can't tell `cmake_c_ci.yml` from `bazel-cmake_c_ci.yml` without inspection
 
 #### 3. **Redundancy Issues**
 - Maven is Java-only → `maven_java_ci.yml` is redundant
@@ -57,7 +57,7 @@ update-submodule.yml         (hyphen, utility)
 
 #### 4. **Ambiguity for Multi-Language Build Systems**
 - Bazel supports Java, C, C++, Kotlin, Go, etc.
-- `bazel-ci.yml` - which language?
+- `bazel_multi_ci.yml` - which language?
 - CMake supports C, C++, Fortran, etc.
 
 #### 5. **Documentation Naming**
@@ -126,7 +126,7 @@ Is build system language-specific?
 ✅ cmake_cpp_ci.yml        - Clear: CMake, C++, CI
 ✅ bazel_java_ci.yml       - Clear: Bazel, Java, CI
 ✅ maven_ci.yml            - Clear: Maven (Java implied), CI
-❌ c-ci.yml                - Unclear: What build system?
+❌ cmake_c_ci.yml                - Unclear: What build system?
 ```
 
 #### 2. **Consistency**
@@ -174,7 +174,7 @@ Documentation uses language-first (`RELEASE_JAVA.md`), but workflows are action-
 
 **Maven (Java) - Language-Specific Build System:**
 ```
-maven-ci.yml                → maven_ci.yml                 ✅ (already exists as underscore variant)
+maven_ci.yml                → maven_ci.yml                 ✅ (already exists as underscore variant)
 maven_build.yml             → maven_build.yml              ✅ (keep)
 maven-central-release.yml   → maven_central_release.yml    ✅ (compound word uses hyphen)
 maven_deploy.yml            → maven_deploy_snapshot.yml    📝 (more specific)
@@ -188,20 +188,20 @@ maven_bump_version.yml      → maven_version_bump.yml       📝 (consistent wi
 
 **CMake (C) - Multi-Language Build System:**
 ```
-c-ci.yml                    → cmake_c_ci.yml               📝 (add build system)
-c-release.yml               → cmake_c_release.yml          📝 (add build system)
+cmake_c_ci.yml                    → cmake_c_ci.yml               📝 (add build system)
+cmake_c_release.yml               → cmake_c_release.yml          📝 (add build system)
 ```
 
 **CMake (C++) - Multi-Language Build System:**
 ```
-cpp-ci.yml                  → cmake_cpp_ci.yml             📝 (add build system)
-cpp-release.yml             → cmake_cpp_release.yml        📝 (add build system)
+cmake_cpp_ci.yml                  → cmake_cpp_ci.yml             📝 (add build system)
+cmake_cpp_release.yml             → cmake_cpp_release.yml        📝 (add build system)
 ```
 
 **Bazel - Multi-Language Build System:**
 ```
-bazel-ci.yml                → bazel_multi_ci.yml           📝 (clarify: supports multiple languages)
-bazel-release.yml           → bazel_multi_release.yml      📝 (or create per-language variants)
+bazel_multi_ci.yml                → bazel_multi_ci.yml           📝 (clarify: supports multiple languages)
+bazel_multi_release.yml           → bazel_multi_release.yml      📝 (or create per-language variants)
 
 # OR, better: Create language-specific variants
 bazel_java_ci.yml           (NEW)
@@ -422,12 +422,12 @@ examples/
 
 ```bash
 # Rename workflows to use consistent underscores
-mv maven-ci.yml maven_ci.yml
+mv maven_ci.yml maven_ci.yml
 mv maven-central-release.yml maven_central_release.yml
 mv maven-github-release.yml maven_github_release.yml
 mv update-submodule.yml update_submodule.yml
-mv bazel-ci.yml bazel_multi_ci.yml
-mv bazel-release.yml bazel_multi_release.yml
+mv bazel_multi_ci.yml bazel_multi_ci.yml
+mv bazel_multi_release.yml bazel_multi_release.yml
 ```
 
 ### Phase 3: Add Build System Context
@@ -436,10 +436,10 @@ mv bazel-release.yml bazel_multi_release.yml
 
 ```bash
 # Rename C/C++ workflows to include CMake
-mv c-ci.yml cmake_c_ci.yml
-mv c-release.yml cmake_c_release.yml
-mv cpp-ci.yml cmake_cpp_ci.yml
-mv cpp-release.yml cmake_cpp_release.yml
+mv cmake_c_ci.yml cmake_c_ci.yml
+mv cmake_c_release.yml cmake_c_release.yml
+mv cmake_cpp_ci.yml cmake_cpp_ci.yml
+mv cmake_cpp_release.yml cmake_cpp_release.yml
 ```
 
 ### Phase 4: Update Examples
@@ -607,7 +607,7 @@ Reference:
 
 ## Questions & Answers
 
-**Q: Why not use hyphens everywhere like `maven-ci.yml`?**
+**Q: Why not use hyphens everywhere like `maven_ci.yml`?**
 A: Hyphens are for compound words (e.g., `pre-commit`). Underscores separate semantic components. This provides visual distinction.
 
 **Q: Why include build system for C/C++ but not Java?**

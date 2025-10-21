@@ -4,7 +4,7 @@ Reusable GitHub Actions workflows for Bazel projects.
 
 ## Available Workflows
 
-### bazel-ci.yml - Bazel CI
+### bazel_multi_ci.yml - Bazel CI
 
 Continuous integration with multiple configurations.
 
@@ -12,7 +12,7 @@ Continuous integration with multiple configurations.
 ```yaml
 jobs:
   ci:
-    uses: artagon/artagon-workflows/.github/workflows/bazel-ci.yml@v1
+    uses: artagon/artagon-workflows/.github/workflows/bazel_multi_ci.yml@v1
     with:
       bazel-configs: 'release,debug,asan'
 ```
@@ -21,7 +21,7 @@ jobs:
 - `bazel-configs` - Comma-separated list of Bazel configurations
 - `bazel-version` - Bazel version (default: 'latest')
 
-### bazel-release.yml - Bazel Release
+### bazel_multi_release.yml - Bazel Release
 
 Release workflow for Bazel projects.
 
@@ -29,7 +29,7 @@ Release workflow for Bazel projects.
 ```yaml
 jobs:
   release:
-    uses: artagon/artagon-workflows/.github/workflows/bazel-release.yml@v1
+    uses: artagon/artagon-workflows/.github/workflows/bazel_multi_release.yml@v1
     with:
       release-version: '1.0.0'
 ```

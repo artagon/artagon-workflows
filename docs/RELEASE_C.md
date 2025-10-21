@@ -789,7 +789,7 @@ configure_file(
 ### Continuous Integration
 
 ```yaml
-# .github/workflows/c-ci.yml
+# .github/workflows/cmake_c_ci.yml
 name: C CI
 
 on: [push, pull_request]

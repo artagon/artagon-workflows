@@ -20,7 +20,7 @@ on:
 jobs:
   build-and-test:
     name: Build and Test
-    uses: artagon/artagon-workflows/.github/workflows/c-ci.yml@v1
+    uses: artagon/artagon-workflows/.github/workflows/cmake_c_ci.yml@v1
     with:
       cmake-version: '3.20'
       build-type: 'Release'

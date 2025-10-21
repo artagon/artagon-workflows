@@ -4,7 +4,7 @@ Reusable GitHub Actions workflows for Maven projects.
 
 ## Available Workflows
 
-### maven-ci.yml - Continuous Integration
+### maven_ci.yml - Continuous Integration
 
 Full CI pipeline with build, test, and verification.
 
@@ -12,7 +12,7 @@ Full CI pipeline with build, test, and verification.
 ```yaml
 jobs:
   ci:
-    uses: artagon/artagon-workflows/.github/workflows/maven-ci.yml@v1
+    uses: artagon/artagon-workflows/.github/workflows/maven_ci.yml@v1
     secrets: inherit
 ```
 
