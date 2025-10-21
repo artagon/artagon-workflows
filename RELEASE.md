@@ -1,6 +1,29 @@
+# Release Process
+
+This document describes the release process for Artagon projects using the Artagon workflows.
+
+## Language-Specific Release Guides
+
+For detailed, language-specific release strategies and best practices, see:
+
+- **[Java Release Strategy](docs/RELEASE_JAVA.md)** - Maven, Gradle, SNAPSHOT versions, Maven Central
+- **[C Release Strategy](docs/RELEASE_C.md)** - CMake, Autotools, tag-based releases, ABI stability
+- **[C++ Release Strategy](docs/RELEASE_CPP.md)** - CMake, Bazel, LTS support, ABI/API management
+- **[Rust Release Strategy](docs/RELEASE_RUST.md)** - Cargo, crates.io, MSRV policy, SemVer
+
+Each guide includes:
+- Branching models tailored to the language ecosystem
+- Version management conventions
+- Build system integration
+- Release automation
+- Best practices from industry leaders
+- Troubleshooting
+
+---
+
 # Maven Release Process
 
-This document describes the release process for Artagon Maven projects using the Artagon workflows.
+This section describes the Maven-specific release process. For comprehensive Java release strategy, see **[RELEASE_JAVA.md](docs/RELEASE_JAVA.md)**.
 
 ## Release Strategy
 

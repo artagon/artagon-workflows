@@ -157,7 +157,17 @@ For detailed instructions, see **[RELEASE.md](RELEASE.md)**.
 
 ## Documentation
 
+### Release Process
+
 - **[RELEASE.md](RELEASE.md)** - Complete release process guide
+- **[Java Release Strategy](docs/RELEASE_JAVA.md)** - Maven, Gradle, SNAPSHOT versions, Maven Central
+- **[C Release Strategy](docs/RELEASE_C.md)** - CMake, Autotools, tag-based releases, ABI stability
+- **[C++ Release Strategy](docs/RELEASE_CPP.md)** - CMake, Bazel, LTS support, ABI/API management
+- **[Rust Release Strategy](docs/RELEASE_RUST.md)** - Cargo, crates.io, MSRV policy, SemVer
+- **[OSS Release Strategies Analysis](docs/OSS_RELEASE_STRATEGIES.md)** - Industry research and best practices
+
+### Workflows
+
 - **[Maven Workflows](docs/MAVEN.md)** - Detailed Maven workflow documentation
 - **[C/C++ Workflows](docs/CPP.md)** - C/C++ workflow documentation
 - **[Bazel Workflows](docs/BAZEL.md)** - Bazel workflow documentation
