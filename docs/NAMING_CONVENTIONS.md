@@ -245,23 +245,64 @@ docs/OSS_RELEASE_STRATEGIES.md
 
 ### Proposed Pattern (Keep Current + Additions)
 
-**Release documentation:**
+**Release documentation (Language-Focused):**
+
+These docs focus on **language ecosystems and release strategies**, independent of build system:
 ```
-docs/RELEASE_JAVA.md              ✅ (keep)
-docs/RELEASE_C.md                 ✅ (keep)
-docs/RELEASE_CPP.md               ✅ (keep)
-docs/RELEASE_RUST.md              ✅ (keep)
+docs/RELEASE_JAVA.md              ✅ (Java ecosystem: Maven, Gradle, SNAPSHOT conventions)
+docs/RELEASE_C.md                 ✅ (C ecosystem: tag-based, ABI stability, conservative)
+docs/RELEASE_CPP.md               ✅ (C++ ecosystem: LTS, ABI/API, PIMPL patterns)
+docs/RELEASE_RUST.md              ✅ (Rust ecosystem: crates.io, MSRV, SemVer)
 docs/RELEASE_KOTLIN.md            📝 (future)
 docs/RELEASE_GO.md                📝 (future)
 ```
 
+**Why language-focused?** Release strategies are driven by language ecosystem conventions:
+- Java: SNAPSHOT versions, Maven Central, semantic versioning
+- C: Conservative releases, ABI compatibility, system packages
+- C++: PIMPL for ABI, LTS support, complex dependencies
+- Rust: Strict SemVer, MSRV policy, crates.io permanence
+
 **Workflow-specific documentation:**
 ```
-docs/WORKFLOWS_MAVEN.md           📝 (rename from MAVEN.md)
-docs/WORKFLOWS_CMAKE.md           📝 (rename from CPP.md)
-docs/WORKFLOWS_BAZEL.md           ✅ (keep BAZEL.md or rename)
-docs/WORKFLOWS_CARGO.md           📝 (future)
+docs/WORKFLOWS_MAVEN.md           📝 (Maven-specific workflows)
+docs/WORKFLOWS_CMAKE.md           📝 (CMake workflows for C and C++)
+docs/WORKFLOWS_BAZEL.md           📝 (Bazel workflows, multi-language)
+docs/WORKFLOWS_CARGO.md           📝 (Cargo workflows for Rust)
 ```
+
+**Note:** Workflow docs are build-system-centric since one build system serves multiple languages:
+- `WORKFLOWS_CMAKE.md` covers both C and C++ CMake workflows
+- `WORKFLOWS_BAZEL.md` covers Java, C, C++, Kotlin, Go, etc.
+
+### Documentation Naming Philosophy
+
+**Two-tier documentation strategy:**
+
+| Documentation Type | Naming Pattern | Focus | Example |
+|-------------------|----------------|-------|---------|
+| **Release Strategy** | `RELEASE_<LANGUAGE>.md` | Language ecosystem, conventions, philosophy | `RELEASE_CPP.md` covers C++ LTS, ABI, PIMPL |
+| **Workflow Guide** | `WORKFLOWS_<BUILDSYSTEM>.md` | Build system usage, CI/CD, practical setup | `WORKFLOWS_CMAKE.md` covers CMake for C and C++ |
+
+**Why this separation?**
+
+1. **Different audiences:**
+   - Release docs: Architects deciding strategy
+   - Workflow docs: Engineers implementing CI/CD
+
+2. **Different scopes:**
+   - Release docs: Ecosystem-wide patterns (language-specific)
+   - Workflow docs: Tool-specific usage (build-system-specific)
+
+3. **Practical example:**
+   ```
+   Developer asks: "How should I release my C++ library?"
+   ├─ Read RELEASE_CPP.md → Learn about LTS, ABI stability, SemVer
+   └─ Read WORKFLOWS_CMAKE.md → Learn how to implement with CMake workflows
+
+   Developer asks: "How do I use CMake workflows?"
+   └─ Read WORKFLOWS_CMAKE.md → Works for both C and C++ projects
+   ```
 
 **Strategy documentation:**
 ```
