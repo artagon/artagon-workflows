@@ -105,7 +105,10 @@ jobs:
           # Also create a formatted version
           echo "## Changes" > /tmp/pr-body.txt
           echo "" >> /tmp/pr-body.txt
-          echo "Updated \`${{ inputs.submodule-path }}\` from \`${{ steps.update.outputs.current-commit }}\` to \`${{ steps.update.outputs.new-commit }}\`" >> /tmp/pr-body.txt
+          SUBMOD="${{ inputs.submodule-path }}"
+          OLD_COMMIT="${{ steps.update.outputs.current-commit }}"
+          NEW_COMMIT="${{ steps.update.outputs.new-commit }}"
+          echo "Updated \`$SUBMOD\` from \`$OLD_COMMIT\` to \`$NEW_COMMIT\`" >> /tmp/pr-body.txt
           echo "" >> /tmp/pr-body.txt
           echo "### Commits" >> /tmp/pr-body.txt
           echo "\`\`\`" >> /tmp/pr-body.txt
