@@ -99,6 +99,7 @@ This repository contains production-ready, reusable GitHub Actions workflows tha
 - **[cmake_cpp_ci.yml](.github/workflows/cmake_cpp_ci.yml)** - C++ project CI with CMake
 - **[cmake_c_release.yml](.github/workflows/cmake_c_release.yml)** - C project release
 - **[cmake_cpp_release.yml](.github/workflows/cmake_cpp_release.yml)** - C++ project release
+- **[cmake_cpack_release.yml](.github/workflows/cmake_cpack_release.yml)** - Multi-format packages (DEB, RPM, TGZ)
 
 ### Bazel Workflows
 

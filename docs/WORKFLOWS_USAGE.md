@@ -349,6 +349,68 @@ jobs:
 
 ---
 
+#### CMake CPack Multi-Format Packages (`cmake_cpack_release.yml`)
+
+Creates DEB, RPM, and tarball packages for C/C++ projects using CMake's CPack system.
+
+**When to use**: Creating distribution packages for Linux (Debian, Ubuntu, Fedora, RHEL, etc.).
+
+**Usage**:
+```yaml
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  package:
+    uses: artagon/artagon-workflows/.github/workflows/cmake_cpack_release.yml@main
+    with:
+      package-formats: 'DEB;RPM;TGZ'
+      sign-packages: true
+      run-linting: true
+    secrets:
+      gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+      gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
+```
+
+**Inputs**:
+| Input | Description | Required | Default |
+|-------|-------------|----------|---------|
+| `package-formats` | CPack generators (DEB;RPM;TGZ;TBZ2;TXZ;ZIP) | No | `DEB;RPM;TGZ` |
+| `cmake-version` | CMake version | No | `3.20` |
+| `build-type` | Build type (Release, Debug, RelWithDebInfo) | No | `Release` |
+| `cmake-options` | Additional CMake options | No | `''` |
+| `sign-packages` | Sign packages with GPG | No | `false` |
+| `run-linting` | Run lintian/rpmlint verification | No | `true` |
+| `upload-to-release` | Upload to GitHub Release | No | `true` |
+| `release-tag` | Release tag (auto-detected for tag pushes) | No | `''` |
+
+**Secrets**:
+- `gpg-private-key`: GPG private key for signing (if `sign-packages: true`)
+- `gpg-passphrase`: GPG key passphrase (if `sign-packages: true`)
+
+**Features**:
+- ✅ Multi-format packaging (DEB, RPM, TGZ, TBZ2, TXZ, ZIP)
+- ✅ GPG signing with detached signatures (.asc)
+- ✅ Package verification (lintian for DEB, rpmlint for RPM)
+- ✅ SHA256 checksums for all packages
+- ✅ Automatic dependency detection
+- ✅ GitHub Release creation with all artifacts
+- ✅ Component-based packaging (runtime/development)
+- ✅ Multi-architecture support
+
+**Package Outputs**:
+- DEB packages for Debian/Ubuntu: `myproject-1.0.0-x86_64.deb`
+- RPM packages for Fedora/RHEL: `myproject-1.0.0.x86_64.rpm`
+- Source tarballs: `myproject-1.0.0-x86_64.tar.gz`, `.tar.bz2`, `.tar.xz`
+- Checksums: `*.sha256` and `SHA256SUMS`
+- GPG signatures: `*.asc` (if signing enabled)
+
+**See also**: [CPack Packaging Guide](CPACK_PACKAGING.md) for CMake configuration details.
+
+---
+
 #### Bazel Multi-Language Release (`bazel_multi_release.yml`)
 
 Creates releases for Bazel projects with Docker image support.

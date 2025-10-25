@@ -302,7 +302,7 @@ docs: update security guidelines
 - Mutable tags can be moved by attackers
 - Critical after Trivy @master vulnerability
 
-**Status**: ✅ 100% complete (17/17 workflows)
+**Status**: ✅ 100% complete (24/24 workflows)
 
 **Reference**: SECURITY_AUDIT.md Issue #1, ACTION_VERSIONS.md
 
@@ -501,7 +501,7 @@ uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 | Category | Status | Details |
 |----------|--------|---------|
 | **Risk Level** | LOW ✅ | Down from MEDIUM-HIGH |
-| **Actions Pinned** | 100% ✅ | 17/17 workflows, 400+ refs |
+| **Actions Pinned** | 100% ✅ | 24/24 workflows, 400+ refs |
 | **Critical Issues** | 0 ✅ | All resolved |
 | **High Issues** | 0 ✅ | All resolved |
 | **Permissions** | 50% 🔄 | 9/17 workflows |

@@ -1,0 +1,342 @@
+# CMake CPack Multi-Format Package Release Workflow
+#
+# Builds and releases packages in multiple formats (DEB, RPM, TGZ, etc.)
+# using CMake's CPack packaging system.
+#
+# Usage:
+#   jobs:
+#     package:
+#       uses: artagon/artagon-workflows/.github/workflows/cmake_cpack_release.yml@main
+#       with:
+#         package-formats: 'DEB;RPM;TGZ'
+#         sign-packages: true
+#       secrets:
+#         gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+#         gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+name: CMake CPack Release
+
+on:
+  workflow_call:
+    inputs:
+      package-formats:
+        description: 'CPack generators (semicolon-separated: DEB;RPM;TGZ;STGZ;TBZ2;TXZ;ZIP)'
+        required: false
+        type: string
+        default: 'DEB;RPM;TGZ'
+      cmake-version:
+        description: 'CMake version to use'
+        required: false
+        type: string
+        default: '3.20'
+      build-type:
+        description: 'CMake build type (Release, Debug, RelWithDebInfo)'
+        required: false
+        type: string
+        default: 'Release'
+      cmake-options:
+        description: 'Additional CMake configuration options'
+        required: false
+        type: string
+        default: ''
+      source-dir:
+        description: 'Source directory relative to repository root'
+        required: false
+        type: string
+        default: '.'
+      build-dir:
+        description: 'Build directory'
+        required: false
+        type: string
+        default: 'build'
+      sign-packages:
+        description: 'Sign packages with GPG'
+        required: false
+        type: boolean
+        default: false
+      run-linting:
+        description: 'Run package linting (lintian for DEB, rpmlint for RPM)'
+        required: false
+        type: boolean
+        default: true
+      upload-to-release:
+        description: 'Upload packages to GitHub Release'
+        required: false
+        type: boolean
+        default: true
+      release-tag:
+        description: 'Release tag (defaults to github.ref_name for tag pushes)'
+        required: false
+        type: string
+        default: ''
+      architecture:
+        description: 'Target architecture (auto-detected if empty)'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      gpg-private-key:
+        description: 'GPG private key for signing packages'
+        required: false
+      gpg-passphrase:
+        description: 'GPG key passphrase'
+        required: false
+
+jobs:
+  build-packages:
+    name: Build Packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            rpm \
+            alien \
+            lintian \
+            rpmlint \
+            dpkg-dev \
+            file
+
+      - name: Set up CMake
+        # jwlawson/actions-setup-cmake@v2.0.2
+        uses: jwlawson/actions-setup-cmake@d06b37b47cfd043ec794ffa3e40e0b6b5858a7ec
+        with:
+          cmake-version: ${{ inputs.cmake-version }}
+
+      - name: Import GPG key
+        if: inputs.sign-packages
+        run: |
+          if [ -z "${{ secrets.gpg-private-key }}" ]; then
+            echo "❌ GPG private key not provided but signing requested"
+            exit 1
+          fi
+
+          echo "${{ secrets.gpg-private-key }}" | gpg --batch --import
+
+          # Get key ID
+          KEY_ID=$(gpg --list-secret-keys --keyid-format LONG | grep sec | head -n1 | awk '{print $2}' | cut -d'/' -f2)
+          echo "GPG_KEY_ID=$KEY_ID" >> "$GITHUB_ENV"
+          echo "✓ Imported GPG key: $KEY_ID"
+
+      - name: Configure CMake
+        env:
+          CMAKE_BUILD_TYPE: ${{ inputs.build-type }}
+        run: |
+          ARCH="${{ inputs.architecture }}"
+          if [ -z "$ARCH" ]; then
+            ARCH=$(uname -m)
+            echo "Auto-detected architecture: $ARCH"
+          fi
+          echo "PACKAGE_ARCH=$ARCH" >> "$GITHUB_ENV"
+
+          cmake -B "${{ inputs.build-dir }}" \
+            -S "${{ inputs.source-dir }}" \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" \
+            -DCPACK_GENERATOR="${{ inputs.package-formats }}" \
+            ${{ inputs.cmake-options }}
+
+      - name: Build project
+        run: |
+          cmake --build "${{ inputs.build-dir }}" \
+            --config ${{ inputs.build-type }} \
+            --parallel "$(nproc)"
+
+      - name: Run tests
+        run: |
+          cd "${{ inputs.build-dir }}"
+          ctest --output-on-failure --parallel "$(nproc)"
+
+      - name: Create packages
+        run: |
+          cd "${{ inputs.build-dir }}"
+          cpack -C ${{ inputs.build-type }} -V
+
+          echo "📦 Generated packages:"
+          ls -lh *.deb *.rpm *.tar.gz *.tar.bz2 *.tar.xz *.zip 2>/dev/null || true
+
+          # Store package info
+          mkdir -p ../package-output
+          cp -v *.deb *.rpm *.tar.gz *.tar.bz2 *.tar.xz *.zip ../package-output/ 2>/dev/null || true
+
+      - name: Verify DEB packages
+        if: contains(inputs.package-formats, 'DEB') && inputs.run-linting
+        run: |
+          cd package-output
+          for deb in *.deb; do
+            if [ -f "$deb" ]; then
+              echo "========================================"
+              echo "Verifying DEB package: $deb"
+              echo "========================================"
+
+              # List contents
+              echo "📄 Package contents:"
+              dpkg-deb -c "$deb"
+
+              # Show package info
+              echo ""
+              echo "ℹ️  Package info:"
+              dpkg-deb -I "$deb"
+
+              # Run lintian
+              echo ""
+              echo "🔍 Running lintian..."
+              lintian "$deb" || echo "⚠️  Lintian found issues (non-blocking)"
+
+              echo ""
+            fi
+          done
+
+      - name: Verify RPM packages
+        if: contains(inputs.package-formats, 'RPM') && inputs.run-linting
+        run: |
+          cd package-output
+          for rpm_pkg in *.rpm; do
+            if [ -f "$rpm_pkg" ]; then
+              echo "========================================"
+              echo "Verifying RPM package: $rpm_pkg"
+              echo "========================================"
+
+              # List contents
+              echo "📄 Package contents:"
+              rpm -qlp "$rpm_pkg"
+
+              # Show package info
+              echo ""
+              echo "ℹ️  Package info:"
+              rpm -qip "$rpm_pkg"
+
+              # Check dependencies
+              echo ""
+              echo "📦 Dependencies:"
+              rpm -qRp "$rpm_pkg"
+
+              # Run rpmlint
+              echo ""
+              echo "🔍 Running rpmlint..."
+              rpmlint "$rpm_pkg" || echo "⚠️  rpmlint found issues (non-blocking)"
+
+              echo ""
+            fi
+          done
+
+      - name: Generate checksums
+        run: |
+          cd package-output
+          for file in *; do
+            if [ -f "$file" ]; then
+              sha256sum "$file" > "$file.sha256"
+              echo "✓ Generated checksum for $file"
+            fi
+          done
+
+          # Create combined checksums file
+          sha256sum * | grep -v ".sha256" > SHA256SUMS 2>/dev/null || true
+
+      - name: Sign packages with GPG
+        if: inputs.sign-packages
+        env:
+          GPG_PASSPHRASE: ${{ secrets.gpg-passphrase }}
+        run: |
+          cd package-output
+
+          for file in *.deb *.rpm *.tar.gz *.tar.bz2 *.tar.xz *.zip; do
+            if [ -f "$file" ]; then
+              echo "Signing $file with GPG..."
+              echo "$GPG_PASSPHRASE" | gpg --batch --yes --passphrase-fd 0 \
+                --armor --detach-sign "$file"
+              echo "✓ Created signature: $file.asc"
+            fi
+          done
+
+          # Sign checksums file
+          if [ -f "SHA256SUMS" ]; then
+            echo "$GPG_PASSPHRASE" | gpg --batch --yes --passphrase-fd 0 \
+              --clearsign SHA256SUMS
+            mv SHA256SUMS.asc SHA256SUMS
+            echo "✓ Signed checksums file"
+          fi
+
+      - name: Prepare release artifacts
+        run: |
+          cd package-output
+          echo "📦 Final package artifacts:"
+          ls -lh
+
+          # Create summary
+          {
+            echo "# Package Build Summary"
+            echo ""
+            echo "## Generated Packages"
+            echo ""
+            for file in *.deb *.rpm *.tar.gz *.tar.bz2 *.tar.xz *.zip; do
+              if [ -f "$file" ]; then
+                SIZE=$(du -h "$file" | cut -f1)
+                SHA256=$(sha256sum "$file" | cut -d' ' -f1)
+                echo "- **$file** ($SIZE)"
+                echo "  - SHA256: \`$SHA256\`"
+                if [ -f "$file.asc" ]; then
+                  echo "  - GPG Signature: ✓"
+                fi
+                echo ""
+              fi
+            done
+          } > RELEASE_NOTES.md
+
+          cat RELEASE_NOTES.md
+
+      - name: Upload packages as artifacts
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+        with:
+          name: packages-${{ env.PACKAGE_ARCH }}
+          path: package-output/*
+          retention-days: 30
+
+      - name: Determine release tag
+        id: release-tag
+        run: |
+          TAG="${{ inputs.release-tag }}"
+          if [ -z "$TAG" ]; then
+            if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+              TAG="${{ github.ref_name }}"
+            else
+              echo "❌ No release tag specified and not running on tag push"
+              echo "Set inputs.release-tag or trigger on tag push"
+              exit 1
+            fi
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Using release tag: $TAG"
+
+      - name: Upload to GitHub Release
+        if: inputs.upload-to-release
+        # softprops/action-gh-release@v2.0.8
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191
+        with:
+          tag_name: ${{ steps.release-tag.outputs.tag }}
+          files: |
+            package-output/*.deb
+            package-output/*.rpm
+            package-output/*.tar.gz
+            package-output/*.tar.bz2
+            package-output/*.tar.xz
+            package-output/*.zip
+            package-output/*.sha256
+            package-output/*.asc
+            package-output/SHA256SUMS
+            package-output/RELEASE_NOTES.md
+          body_path: package-output/RELEASE_NOTES.md
+          draft: false
+          prerelease: false

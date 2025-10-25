@@ -28,7 +28,7 @@ When you start working on this project:
 ### Step 3: Apply Security Patterns
 ```
 - Pin all actions to SHAs (.model-context/skills/github-workflows.md)
-- Add explicit permissions (see templates in context.md)
+- Add explicit permissions (see templates in .model-context/skills/github-workflows.md)
 - Validate all user inputs (see examples in context.md)
 - Follow mono-repo strategy (REPOSITORY_STRATEGY.md)
 ```
@@ -42,7 +42,7 @@ When you start working on this project:
 #### 1. **No Redoing Completed Work**
 ```
 ✅ COMPLETED (Do NOT redo):
-- Action pinning (17/17 workflows) ✅
+- Action pinning (24/24 workflows) ✅
 - Trivy @master fix ✅
 - GPG passphrase fix ✅
 - Buildifier checksum ✅
@@ -50,7 +50,7 @@ When you start working on this project:
 - All documentation ✅
 
 ⏳ REMAINING (Can work on):
-- Permissions blocks (8 workflows)
+- Permissions blocks (7 workflows)
 - Input validation (5 workflows)
 - Test fixtures
 ```
@@ -421,7 +421,7 @@ cat .model-context/SECURITY_IMPLEMENTATION_PLAN.md | grep "⏳"
 
 **Verify current state**:
 ```bash
-# Count pinned actions (should be 17)
+# Count workflows using pinned checkout (expect 24)
 grep -l "11bd71901bbe5b1630ceea73d27597364c9af683" .github/workflows/*.yml | wc -l
 
 # Check for unpinned actions (should be 0)
