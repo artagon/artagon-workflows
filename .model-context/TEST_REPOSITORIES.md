@@ -79,17 +79,27 @@ Instead of embedding unit tests within the artagon-workflows repository, we use 
 
 Test repositories are automatically triggered when:
 
-1. **Workflow Changes** (via `trigger_test_repos.yml`):
-   - Any `.yml`/`.yaml` file in `.github/workflows/` is pushed to main
+1. **Pull Requests** (via `ci.yml`):
+   - Runs when PRs modify workflow files
+   - Detects which workflows changed (Maven, CMake, Bazel)
+   - Triggers only relevant test repos or all if multiple workflows affected
+   - Posts comment on PR with links to test results
    - Sends `repository_dispatch` event type: `workflow-updated`
 
-2. **Releases**:
+2. **Workflow Changes on Main** (via `ci.yml` and `trigger_test_repos.yml`):
+   - Any `.yml`/`.yaml` file in `.github/workflows/` is pushed to main
+   - `ci.yml` runs for immediate validation
+   - `trigger_test_repos.yml` also triggers for redundancy
+   - Sends `repository_dispatch` event type: `workflow-updated`
+
+3. **Releases** (via `trigger_test_repos.yml`):
    - When a release is published in artagon-workflows
    - Sends `repository_dispatch` event type: `release-published`
 
-3. **Daily Schedule**:
+4. **Daily Schedule**:
    - Each test repo runs at 2 AM UTC daily
    - Catches breaking changes from dependencies
+   - Runs independently of main repo
 
 ### Manual Triggers
 
@@ -110,6 +120,42 @@ Test repositories can be manually triggered via:
 
 3. **GitHub UI**:
    - Navigate to repository → Actions → CI workflow → Run workflow
+
+## Main Repository Workflows
+
+The artagon-workflows repository has two workflows for managing test repositories:
+
+### 1. ci.yml (CI Workflow)
+**Purpose**: Validate workflow changes on PRs and pushes
+
+**Runs on**:
+- Pull requests that modify workflow files
+- Pushes to main that modify workflow files
+
+**Features**:
+- Detects which workflows changed (Maven, CMake, Bazel)
+- Triggers only relevant test repositories
+- Posts PR comment with links to test results
+- Generates step summary with test status
+- Runs asynchronously - doesn't wait for test results
+
+**Use case**: Immediate validation during development
+
+### 2. trigger_test_repos.yml (Release Trigger)
+**Purpose**: Trigger all test repositories on releases and workflow changes
+
+**Runs on**:
+- Releases published
+- Pushes to main that modify workflow files
+- Manual workflow dispatch
+
+**Features**:
+- Always triggers all test repositories
+- Includes event type (workflow-updated or release-published)
+- Passes commit/release metadata to test repos
+- Generates summary with links to all test repos
+
+**Use case**: Comprehensive testing on stable releases
 
 ## Benefits of Separate Repositories
 
