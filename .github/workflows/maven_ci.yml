@@ -44,6 +44,11 @@ on:
         required: false
         type: boolean
         default: false
+      upload-artifacts:
+        description: 'Upload build and test artifacts'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   build:
@@ -139,7 +144,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload Build Artifacts
-        if: success()
+        if: success() && inputs.upload-artifacts
         # actions/upload-artifact@v4.4.3
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
@@ -150,7 +155,7 @@ jobs:
           retention-days: 7
 
       - name: Upload Test Results
-        if: always() && inputs.run-tests
+        if: always() && inputs.run-tests && inputs.upload-artifacts
         # actions/upload-artifact@v4.4.3
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
