@@ -22,7 +22,7 @@ Centralized repository of production-ready, reusable GitHub Actions workflows fo
 ```
 artagon-workflows/
 ├── .github/
-│   └── workflows/            # 24 reusable workflow files
+│   └── workflows/            # 25 reusable workflow files (includes sbom.yml)
 ├── .model-context/           # AI model instructions (THIS FOLDER)
 ├── docs/                     # Build & release documentation
 ├── examples/                 # Usage examples for each build system
@@ -86,11 +86,19 @@ This folder contains comprehensive AI model instructions:
     - Requirements for SBOM workflows across Java, C, C++, Rust
     - Compliance expectations (NIST SSDF, EU CRA, SLSA Level 3)
     - Storage, signing, and distribution targets
+    - Reference for consumers implementing SBOM generation
 
 11. **SBOM_IMPLEMENTATION.md**
     - Implementation plan for SBOM automation
     - Tooling choices and workflow architecture
     - Documentation and rollout strategy
+    - Multi-language SBOM workflow design
+
+12. **skills/sbom-workflows.md**
+    - Best practices for SBOM generation and supply-chain security
+    - Workflow structure and language-specific tips
+    - Tooling reference (Syft, Trivy, Grype, OSV-Scanner, Cosign)
+    - Common pitfalls and troubleshooting
 
 ---
 
@@ -124,7 +132,14 @@ This folder contains comprehensive AI model instructions:
    - High-risk workflows validate user-controlled inputs before shell execution
    - Patterns from `maven_ci.yml` reused across build and release pipelines
 
-### ⏳ REMAINING TASKS (25% - 4 hours)
+7. **SBOM Generation Workflow** ✅
+   - sbom.yml workflow implemented with pinned Chainguard wolfi-base image
+   - Syft for SBOM generation (SPDX + CycloneDX formats)
+   - Multi-scanner vulnerability detection (Trivy, Grype, OSV-Scanner)
+   - SARIF upload for GitHub Security tab integration
+   - Comprehensive documentation (SBOM_REQ.md, SBOM_IMPLEMENTATION.md, skills/sbom-workflows.md)
+
+### ⏳ REMAINING TASKS (20% - 3 hours)
 
 1. **Test Fixtures** (planned)
    - Create minimal test projects

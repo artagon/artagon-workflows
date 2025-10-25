@@ -209,6 +209,100 @@ jobs:
       # ... rest of workflow
 ```
 
+### SBOM Workflow Template
+```yaml
+name: Generate SBOM
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+  schedule:
+    - cron: '0 5 * * 1'  # Weekly on Monday
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write  # For SARIF upload
+  actions: read
+  packages: write         # If publishing to registry
+
+jobs:
+  sbom:
+    name: Build SBOM and Scan
+    runs-on: ubuntu-latest
+    env:
+      SBOM_DIR: sbom
+      # Pin Chainguard wolfi-base image by digest
+      WOLFI_IMAGE: cgr.dev/chainguard/wolfi-base@sha256:DIGEST_HERE
+    steps:
+      - name: Checkout repository
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Prepare workspace
+        run: |
+          set -euo pipefail
+          mkdir -p "$SBOM_DIR"
+
+      - name: Restore scanner caches
+        # actions/cache@v4.1.2
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a
+        with:
+          path: |
+            ~/.cache/trivy
+            ~/.cache/grype
+          key: sbom-scanners-${{ runner.os }}
+          restore-keys: sbom-scanners-
+
+      - name: Generate SBOM and run scanners
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.cache/trivy ~/.cache/grype
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -v "$HOME/.cache/trivy:/cache/trivy" \
+            -v "$HOME/.cache/grype:/cache/grype" \
+            -w /workspace \
+            -e SBOM_DIR="$SBOM_DIR" \
+            -e TRIVY_CACHE_DIR=/cache/trivy \
+            -e GRYPE_DB_CACHE_DIR=/cache/grype/db \
+            "$WOLFI_IMAGE" \
+            sh -euo pipefail -c '
+              apk add --no-cache syft trivy grype osv-scanner >/dev/null
+              syft dir:/workspace \
+                -o spdx-json="$SBOM_DIR/sbom.spdx.json" \
+                -o cyclonedx-json="$SBOM_DIR/sbom.cyclonedx.json"
+              trivy sbom "$SBOM_DIR/sbom.cyclonedx.json" \
+                --format sarif \
+                --severity CRITICAL,HIGH \
+                --output "$SBOM_DIR/trivy.sarif"
+              grype sbom:"$SBOM_DIR/sbom.spdx.json" \
+                -o table > "$SBOM_DIR/grype.txt"
+              osv-scanner --sbom "$SBOM_DIR/sbom.cyclonedx.json" \
+                --output "$SBOM_DIR/osv.json"
+            '
+
+      - name: Upload SBOM artifacts
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+        with:
+          name: sbom-artifacts
+          path: sbom/
+          retention-days: 14
+
+      - name: Upload SARIF results
+        if: hashFiles('sbom/trivy.sarif') != ''
+        # github/codeql-action/upload-sarif@v3.27.5
+        uses: github/codeql-action/upload-sarif@4f3212b61783c3c68e8309a0f18a699764811cda
+        with:
+          sarif_file: sbom/trivy.sarif
+```
+
 ---
 
 ## 🎯 Common Tasks
@@ -509,6 +603,7 @@ done
 | SBOM_REQ.md | SBOM requirements and compliance scope | Before SBOM or supply-chain tasks |
 | SBOM_IMPLEMENTATION.md | SBOM implementation plan and tooling | During SBOM workflow development |
 | skills/github-workflows.md | Security best practices | For all workflow changes |
+| skills/sbom-workflows.md | SBOM workflow patterns and best practices | When implementing SBOM generation |
 
 ### File Locations
 ```
@@ -520,9 +615,12 @@ done
 ├── SECURITY_AUDIT.md                # Vulnerability audit
 ├── SECURITY_IMPLEMENTATION_PLAN.md  # Implementation roadmap
 ├── TESTING_STRATEGY.md              # Testing framework
+├── SBOM_REQ.md                      # SBOM requirements for consumers
+├── SBOM_IMPLEMENTATION.md           # SBOM implementation plan
 └── skills/
     ├── github-workflows.md          # Security best practices
-    └── development-workflow.md      # Development workflow guide
+    ├── development-workflow.md      # Development workflow guide
+    └── sbom-workflows.md            # SBOM workflow patterns
 ```
 
 ### Common Commands
