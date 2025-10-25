@@ -2,6 +2,74 @@
 
 Reusable GitHub Actions workflows for Artagon projects providing standardized CI/CD pipelines for Maven, C/C++, and Bazel builds.
 
+## About
+
+**Artagon Workflows** is a comprehensive, production-ready collection of reusable GitHub Actions workflows designed to streamline software development across multiple languages and build systems. This repository provides enterprise-grade CI/CD pipelines with built-in security, compliance, and best practices for Maven (Java), CMake (C/C++), and Bazel projects.
+
+### 🎯 Key Features
+
+- **🔄 20+ Reusable Workflows** - Pre-built, tested workflows for build, test, release, and security scanning
+- **🔒 Security-First Design** - All actions pinned to commit SHAs, TLS 1.3 enforcement, certificate validation, checksum verification
+- **🚀 Multi-Language Support** - Java/Maven, C/C++/CMake, Bazel projects with language-specific optimizations
+- **📦 Release Automation** - Complete release pipelines for Maven Central, GitHub Releases, Docker Hub, and custom registries
+- **🛡️ Security Scanning** - CodeQL analysis, dependency review, vulnerability scanning, and license compliance
+- **🤖 Bot Integration** - Auto-merge for Dependabot/Renovate PRs with configurable approval workflows
+- **⚡ Performance Optimized** - Intelligent caching for Maven, Bazel, and CMake dependencies
+- **🔧 Highly Configurable** - Extensive input parameters for project-specific customization
+- **📊 PR Validation** - Semantic PR titles, branch naming conventions, commit message validation
+- **✅ Testing Support** - Python pytest, shell script testing, multi-version matrix testing
+- **📝 Comprehensive Documentation** - Detailed guides, examples, and best practices for every workflow
+
+### 🏗️ Build Systems Supported
+
+- **Maven** - Full lifecycle support (compile, test, package, deploy, release)
+- **CMake** - Cross-platform C/C++ builds with multi-OS support (Linux, macOS, Windows)
+- **Bazel** - Modern build system with remote caching and hermetic builds
+
+### 🔐 Security Features
+
+- **Supply Chain Security** - All GitHub Actions pinned to immutable commit SHAs
+- **Secure Downloads** - TLS 1.3, certificate validation, SHA256 checksums for all binary downloads
+- **Vulnerability Scanning** - Automated dependency and code security analysis
+- **License Compliance** - Configurable allow/deny lists for dependency licenses
+- **Secret Management** - Secure handling via GitHub Secrets, no hardcoded credentials
+- **CodeQL Analysis** - Semantic code analysis for 8+ programming languages
+- **Dependency Review** - PR-based security and license scanning for dependency changes
+
+### 🎨 Use Cases
+
+- **Open Source Projects** - Complete Maven Central release pipelines with GPG signing and attestation
+- **Enterprise Applications** - Private repository releases with security scanning and compliance
+- **Multi-Module Projects** - Support for complex Maven/Bazel multi-module builds
+- **Cross-Platform Development** - C/C++ builds across Linux, macOS, and Windows
+- **Microservices** - Docker image builds with multi-platform support
+- **Library Development** - Release automation for reusable libraries and frameworks
+- **Security-Critical Software** - Built-in vulnerability scanning and secure build practices
+
+### 🏆 Benefits
+
+- **Consistency** - Standardized CI/CD across all projects eliminates configuration drift
+- **Time Savings** - Pre-built workflows reduce setup time from hours to minutes
+- **Security** - Built-in best practices prevent common security vulnerabilities
+- **Maintainability** - Centralized workflow updates propagate to all consuming projects
+- **Reliability** - Production-tested workflows with extensive error handling
+- **Flexibility** - Configurable inputs allow project-specific customization
+- **Documentation** - Comprehensive guides and examples accelerate onboarding
+
+### 🏷️ GitHub Topics
+
+This repository is tagged with the following topics for discoverability:
+
+`github-actions` `workflow` `reusable-workflows` `ci-cd` `continuous-integration` `continuous-deployment` `devops` `automation` `build-automation` `release-automation` `maven` `cmake` `bazel` `java` `cpp` `c` `cxx` `security-scanning` `vulnerability-scanning` `codeql` `dependency-management` `supply-chain-security` `testing` `pytest` `shellcheck` `semantic-versioning` `semver` `pr-validation` `auto-merge` `dependabot` `renovate` `maven-central` `ossrh` `docker` `multi-platform` `cross-platform` `linux` `macos` `windows` `gpg-signing` `artifact-attestation` `sbom` `license-compliance`
+
+### 📊 Workflow Categories
+
+**Build & Test** - CI workflows for continuous integration and testing
+**Release & Deploy** - Automated release pipelines for multiple targets
+**Security** - Vulnerability scanning, dependency review, and CodeQL analysis
+**Validation** - PR validation, semantic commit checking, and branch naming
+**Automation** - Auto-merge, submodule updates, and maintenance workflows
+
 ## Overview
 
 This repository contains production-ready, reusable GitHub Actions workflows that can be called from any Artagon project. These workflows provide:
