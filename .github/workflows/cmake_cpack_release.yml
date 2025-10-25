@@ -315,7 +315,7 @@ jobs:
         run: |
           TAG="${{ inputs.release-tag }}"
           if [ -z "$TAG" ]; then
-            if [[ "${{ github.ref }}" == "refs/tags/"* ]]; then
+            if [[ "${{ github.ref }}" =~ ^refs/tags/ ]]; then
               TAG="${{ github.ref_name }}"
             else
               echo "❌ No release tag specified and not running on tag push"
