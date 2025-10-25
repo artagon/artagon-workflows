@@ -47,7 +47,7 @@ steps:
 **Why This Matters**:
 - In 2021, Codecov's Bash uploader was compromised via CI/CD
 - Attackers who compromise action repos can move tags to malicious code
-- SLA provides cryptographic verification of code integrity
+- SHA provides cryptographic verification of code integrity
 
 **How to Find Commit SHAs**:
 ```bash
