@@ -164,11 +164,11 @@ jobs:
           cpack -C ${{ inputs.build-type }} -V
 
           echo "📦 Generated packages:"
-          ls -lh *.deb *.rpm *.tar.gz *.tar.bz2 *.tar.xz *.zip 2>/dev/null || true
+          ls -lh ./*.deb ./*.rpm ./*.tar.gz ./*.tar.bz2 ./*.tar.xz ./*.zip 2>/dev/null || true
 
           # Store package info
           mkdir -p ../package-output
-          cp -v *.deb *.rpm *.tar.gz *.tar.bz2 *.tar.xz *.zip ../package-output/ 2>/dev/null || true
+          cp -v ./*.deb ./*.rpm ./*.tar.gz ./*.tar.bz2 ./*.tar.xz ./*.zip ../package-output/ 2>/dev/null || true
 
       - name: Verify DEB packages
         if: contains(inputs.package-formats, 'DEB') && inputs.run-linting
@@ -234,7 +234,7 @@ jobs:
       - name: Generate checksums
         run: |
           cd package-output
-          for file in *; do
+          for file in ./*; do
             if [ -f "$file" ]; then
               sha256sum "$file" > "$file.sha256"
               echo "✓ Generated checksum for $file"
@@ -242,7 +242,7 @@ jobs:
           done
 
           # Create combined checksums file
-          sha256sum * | grep -v ".sha256" > SHA256SUMS 2>/dev/null || true
+          sha256sum ./* | grep -v ".sha256" > SHA256SUMS 2>/dev/null || true
 
       - name: Sign packages with GPG
         if: inputs.sign-packages
@@ -251,13 +251,15 @@ jobs:
         run: |
           cd package-output
 
-          for file in *.deb *.rpm *.tar.gz *.tar.bz2 *.tar.xz *.zip; do
-            if [ -f "$file" ]; then
-              echo "Signing $file with GPG..."
-              echo "$GPG_PASSPHRASE" | gpg --batch --yes --passphrase-fd 0 \
-                --armor --detach-sign "$file"
-              echo "✓ Created signature: $file.asc"
-            fi
+          for pattern in ./*.deb ./*.rpm ./*.tar.gz ./*.tar.bz2 ./*.tar.xz ./*.zip; do
+            for file in $pattern; do
+              if [ -f "$file" ]; then
+                echo "Signing $file with GPG..."
+                echo "$GPG_PASSPHRASE" | gpg --batch --yes --passphrase-fd 0 \
+                  --armor --detach-sign "$file"
+                echo "✓ Created signature: $file.asc"
+              fi
+            done
           done
 
           # Sign checksums file
@@ -280,17 +282,21 @@ jobs:
             echo ""
             echo "## Generated Packages"
             echo ""
-            for file in *.deb *.rpm *.tar.gz *.tar.bz2 *.tar.xz *.zip; do
-              if [ -f "$file" ]; then
-                SIZE=$(du -h "$file" | cut -f1)
-                SHA256=$(sha256sum "$file" | cut -d' ' -f1)
-                echo "- **$file** ($SIZE)"
-                echo "  - SHA256: \`$SHA256\`"
-                if [ -f "$file.asc" ]; then
-                  echo "  - GPG Signature: ✓"
+            for pattern in ./*.deb ./*.rpm ./*.tar.gz ./*.tar.bz2 ./*.tar.xz ./*.zip; do
+              for file in $pattern; do
+                if [ -f "$file" ]; then
+                  SIZE=$(du -h "$file" | cut -f1)
+                  SHA256=$(sha256sum "$file" | cut -d' ' -f1)
+                  # Remove ./ prefix for display
+                  DISPLAY_FILE="${file#./}"
+                  echo "- **$DISPLAY_FILE** ($SIZE)"
+                  echo "  - SHA256: \`$SHA256\`"
+                  if [ -f "$file.asc" ]; then
+                    echo "  - GPG Signature: ✓"
+                  fi
+                  echo ""
                 fi
-                echo ""
-              fi
+              done
             done
           } > RELEASE_NOTES.md
 
@@ -309,7 +315,7 @@ jobs:
         run: |
           TAG="${{ inputs.release-tag }}"
           if [ -z "$TAG" ]; then
-            if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            if [[ "${{ github.ref }}" == "refs/tags/"* ]]; then
               TAG="${{ github.ref_name }}"
             else
               echo "❌ No release tag specified and not running on tag push"
