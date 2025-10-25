@@ -100,8 +100,9 @@ jobs:
           validateSingleCommit: false
 
       - name: Check Branch Name
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
         run: |
-          BRANCH_NAME="${{ github.head_ref }}"
           echo "Branch: $BRANCH_NAME"
 
           # Valid branch pattern: <type>/<issue>-<description> or <type>/<description>
