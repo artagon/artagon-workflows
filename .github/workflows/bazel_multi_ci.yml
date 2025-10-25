@@ -36,6 +36,11 @@ on:
         required: false
         type: string
         default: '//...'
+      upload-artifacts:
+        description: 'Upload build and analysis artifacts'
+        required: false
+        type: boolean
+        default: false
 
 env:
   BAZELISK_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -315,7 +320,7 @@ jobs:
           bazel query --output=graph 'deps(${{ inputs.targets }})' > deps.dot || true
 
       - name: Upload dependency graph
-        if: always()
+        if: always() && inputs.upload-artifacts
         # actions/upload-artifact@v4.4.3
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
