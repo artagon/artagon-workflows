@@ -132,7 +132,7 @@ Recommended jobs (per language workflow):
 ## Testing Strategy
 
 - Follow `TESTING_INSTRUCTIONS.md` for fixture repositories (Maven, C, C++, Bazel, Rust).
-- Validate runtime and output formats.<n>This ensures no workflow regression slips through.
+- Validate runtime and output formats. This ensures no workflow regression slips through.
 - Add smoke tests to run nightly/weekly via automation driver.
 
 ---
