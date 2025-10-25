@@ -46,9 +46,46 @@ env:
   BUILD_TYPE: Release
 
 jobs:
+  validate-inputs:
+    name: Validate Inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check workflow inputs
+        run: |
+          set -euo pipefail
+
+          CMAKE_OPTS="${{ inputs.cmake-options }}"
+          if ! echo "$CMAKE_OPTS" | grep -qE '^[-A-Za-z0-9_./=:," ]*$'; then
+            echo "❌ Invalid cmake-options: $CMAKE_OPTS"
+            echo "Allowed characters: letters, numbers, space, dash, underscore, dot, slash, colon, equals, comma, double quotes"
+            exit 1
+          fi
+
+          CXX_STANDARD="${{ inputs.cxx-standard }}"
+          if ! echo "$CXX_STANDARD" | grep -qE '^(17|20|23)$'; then
+            echo "❌ Invalid cxx-standard: $CXX_STANDARD"
+            echo "Allowed values: 17, 20, 23"
+            exit 1
+          fi
+
+          TEST_STANDARDS="${{ inputs.test-standards }}"
+          if [ -n "$TEST_STANDARDS" ] && ! echo "$TEST_STANDARDS" | grep -qE '^[0-9, ]+$'; then
+            echo "❌ Invalid test-standards: $TEST_STANDARDS"
+            echo "Allowed characters: digits, commas, spaces"
+            exit 1
+          fi
+
+          echo "✅ Input validation passed"
+
   build-linux:
     name: Build (${{ matrix.os }}, ${{ matrix.compiler }}, C++${{ matrix.std }})
     runs-on: ${{ matrix.os }}
+    needs: validate-inputs
+    permissions:
+      contents: read
+      packages: read
     strategy:
       fail-fast: false
       matrix:
@@ -146,6 +183,10 @@ jobs:
   build-multiplatform:
     name: Build (${{ matrix.os }}, C++${{ inputs.cxx-standard }})
     runs-on: ${{ matrix.os }}
+    needs: validate-inputs
+    permissions:
+      contents: read
+      packages: read
     strategy:
       fail-fast: false
       matrix:
@@ -210,6 +251,10 @@ jobs:
   code-coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
+      packages: read
     if: inputs.enable-coverage
 
     steps:
@@ -258,6 +303,10 @@ jobs:
   sanitizers:
     name: Sanitizers (${{ matrix.sanitizer }})
     runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
+      packages: read
     if: inputs.enable-sanitizers
     strategy:
       fail-fast: false
@@ -309,6 +358,10 @@ jobs:
   valgrind:
     name: Memory Check (Valgrind)
     runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
+      packages: read
 
     steps:
       - name: Checkout code
@@ -342,6 +395,9 @@ jobs:
   format-check:
     name: Format Check
     runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -363,6 +419,9 @@ jobs:
   build-docs:
     name: Build Documentation
     runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code

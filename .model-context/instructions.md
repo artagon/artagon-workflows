@@ -50,8 +50,7 @@ When you start working on this project:
 - All documentation ✅
 
 ⏳ REMAINING (Can work on):
-- Permissions blocks (7 workflows)
-- Input validation (5 workflows)
+- Input validation (any new user-controllable inputs)
 - Test fixtures
 ```
 

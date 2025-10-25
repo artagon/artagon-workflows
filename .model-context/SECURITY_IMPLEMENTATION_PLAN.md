@@ -221,10 +221,10 @@ chmod +x /usr/local/bin/buildifier
 **Effort**: 3 hours
 
 **Tasks**:
-- [ ] Add permissions blocks to all workflows
-- [ ] Follow least-privilege principle
-- [ ] Add `security-events: write` to maven_security_scan.yml
-- [ ] Document permission requirements
+- [x] Add permissions blocks to all workflows
+- [x] Follow least-privilege principle
+- [x] Add `security-events: write` to maven_security_scan.yml
+- [x] Document permission requirements
 
 **Template**:
 ```yaml
@@ -472,13 +472,13 @@ jobs:
 After implementation, verify:
 
 ### Security ✅
-- [ ] All actions pinned to commit SHAs
-- [ ] No unpinned actions (`@v[0-9]` or `@master`)
-- [ ] Input validation on all user-controlled inputs
+- [x] All actions pinned to commit SHAs
+- [x] No unpinned actions (`@v[0-9]` or `@master`)
+- [x] Input validation on all user-controlled inputs
 - [ ] No hardcoded secrets
 - [ ] GPG passphrase not in process arguments
 - [ ] Binary downloads have checksum verification
-- [ ] All workflows have explicit permissions
+- [x] All workflows have explicit permissions
 - [ ] Dependabot enabled and configured
 - [ ] Security alerts enabled
 

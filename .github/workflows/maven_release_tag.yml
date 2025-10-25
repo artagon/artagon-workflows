@@ -50,6 +50,8 @@ jobs:
   validate-tag:
     name: Validate Release Tag
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       tag: ${{ steps.resolve-tag.outputs.tag }}
     steps:
@@ -106,6 +108,9 @@ jobs:
   release:
     name: Publish Release
     needs: validate-tag
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/maven_deploy.yml
     with:
       java-version: ${{ inputs.java-version }}

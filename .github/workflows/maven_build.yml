@@ -77,6 +77,26 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Project version: $VERSION"
 
+      - name: Validate inputs
+        run: |
+          set -euo pipefail
+
+          MAVEN_ARGS="${{ inputs.maven-args }}"
+          if ! echo "$MAVEN_ARGS" | grep -qE '^[-A-Za-z0-9=.,_:/ ]*$'; then
+            echo "❌ Invalid maven-args: $MAVEN_ARGS"
+            echo "Allowed characters: letters, numbers, space, hyphen, underscore, dot, slash, colon, equals, comma"
+            exit 1
+          fi
+
+          CACHE_PREFIX="${{ inputs.cache-key-prefix }}"
+          if [ -n "$CACHE_PREFIX" ] && ! echo "$CACHE_PREFIX" | grep -qE '^[A-Za-z0-9._-]+$'; then
+            echo "❌ Invalid cache-key-prefix: $CACHE_PREFIX"
+            echo "Allowed characters: letters, numbers, dot, underscore, hyphen"
+            exit 1
+          fi
+
+          echo "✅ Input validation passed"
+
       - name: Build with Maven (Skip Tests)
         if: ${{ !inputs.run-tests }}
         run: mvn clean verify -DskipTests ${{ inputs.maven-args }}

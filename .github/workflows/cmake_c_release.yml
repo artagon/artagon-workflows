@@ -65,6 +65,8 @@ jobs:
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       version: ${{ steps.get_version.outputs.version }}
@@ -107,6 +109,8 @@ jobs:
     needs: create-release
     runs-on: ubuntu-latest
     if: inputs.build-deb
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -187,6 +191,8 @@ jobs:
     needs: create-release
     runs-on: ubuntu-latest
     if: inputs.build-rpm
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -254,6 +260,8 @@ jobs:
     needs: create-release
     runs-on: ubuntu-20.04  # Use older Ubuntu for better compatibility
     if: inputs.build-appimage
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -335,6 +343,8 @@ jobs:
     needs: create-release
     runs-on: macos-latest
     if: inputs.build-macos
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -389,6 +399,8 @@ jobs:
     needs: create-release
     runs-on: windows-latest
     if: inputs.build-windows
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -423,6 +435,8 @@ jobs:
     name: Build Source Tarball
     needs: create-release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout

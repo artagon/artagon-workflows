@@ -154,6 +154,19 @@ jobs:
 
           echo "✅ Version is SNAPSHOT: $VERSION"
 
+      - name: Validate inputs
+        run: |
+          set -euo pipefail
+
+          DEPLOY_PROFILE="${{ inputs.deploy-profile }}"
+          if ! echo "$DEPLOY_PROFILE" | grep -qE '^[-A-Za-z0-9_,]+$'; then
+            echo "❌ Invalid deploy-profile: $DEPLOY_PROFILE"
+            echo "Allowed characters: letters, numbers, comma, hyphen, underscore"
+            exit 1
+          fi
+
+          echo "✅ Input validation passed"
+
       - name: Set release version
         id: set-release-version
         run: |
