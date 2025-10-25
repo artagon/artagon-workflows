@@ -1,0 +1,69 @@
+# Dependency Review Reusable Workflow
+#
+# Reviews dependency changes in pull requests for security vulnerabilities,
+# license issues, and supply chain risks.
+#
+# Usage:
+#   jobs:
+#     dependency-review:
+#       uses: artagon/artagon-workflows/.github/workflows/dependency_review.yml@main
+#       with:
+#         fail-on-severity: moderate
+
+name: Dependency Review
+
+on:
+  workflow_call:
+    inputs:
+      fail-on-severity:
+        description: 'Fail on vulnerabilities at or above this severity (low, moderate, high, critical)'
+        required: false
+        type: string
+        default: 'moderate'
+      fail-on-scopes:
+        description: 'Fail on vulnerabilities in these scopes (runtime, development)'
+        required: false
+        type: string
+        default: 'runtime'
+      allow-licenses:
+        description: 'Comma-separated list of allowed licenses'
+        required: false
+        type: string
+        default: 'MIT, Apache-2.0, BSD-3-Clause, BSD-2-Clause, ISC, 0BSD'
+      deny-licenses:
+        description: 'Comma-separated list of denied licenses'
+        required: false
+        type: string
+        default: 'GPL-2.0, GPL-3.0, AGPL-3.0'
+      comment-summary:
+        description: 'Post summary comment on PR'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Dependency Review
+        # actions/dependency-review-action@v4.4.0
+        uses: actions/dependency-review-action@4081bf99e2866ebe428fc0477b69eb4fcda7220a
+        with:
+          fail-on-severity: ${{ inputs.fail-on-severity }}
+          fail-on-scopes: ${{ inputs.fail-on-scopes }}
+          allow-licenses: ${{ inputs.allow-licenses }}
+          deny-licenses: ${{ inputs.deny-licenses }}
+          comment-summary-in-pr: ${{ inputs.comment-summary }}
+          vulnerability-check: true
+          license-check: true
+          base-ref: ${{ github.event.pull_request.base.ref }}
+          head-ref: ${{ github.event.pull_request.head.ref }}

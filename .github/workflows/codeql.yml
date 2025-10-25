@@ -1,0 +1,95 @@
+# CodeQL Security Scanning Reusable Workflow
+#
+# Performs semantic code analysis to find security vulnerabilities and
+# coding errors using GitHub's CodeQL engine.
+#
+# Supports: C/C++, C#, Go, Java, JavaScript/TypeScript, Python, Ruby, Swift
+#
+# Usage:
+#   jobs:
+#     codeql:
+#       uses: artagon/artagon-workflows/.github/workflows/codeql.yml@main
+#       with:
+#         languages: '["java", "javascript"]'
+
+name: CodeQL Security Analysis
+
+on:
+  workflow_call:
+    inputs:
+      languages:
+        description: 'Languages to analyze (JSON array: ["java", "cpp", "python", "javascript", "go", "ruby", "csharp", "swift"])'
+        required: false
+        type: string
+        default: '["java"]'
+      build-mode:
+        description: 'Build mode: none, autobuild, manual (default: autobuild)'
+        required: false
+        type: string
+        default: 'autobuild'
+      build-command:
+        description: 'Build command for manual build mode'
+        required: false
+        type: string
+        default: ''
+      queries:
+        description: 'CodeQL query suites: default, security-extended, security-and-quality'
+        required: false
+        type: string
+        default: 'security-extended'
+      config-file:
+        description: 'Path to CodeQL config file (optional)'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  analyze:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ${{ fromJSON(inputs.languages) }}
+
+    steps:
+      - name: Checkout code
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Initialize CodeQL
+        # github/codeql-action/init@v3.27.5
+        uses: github/codeql-action/init@4f3212b61783c3c68e8309a0f18a699764811cda
+        with:
+          languages: ${{ matrix.language }}
+          queries: ${{ inputs.queries }}
+          config-file: ${{ inputs.config-file }}
+
+      - name: Autobuild
+        if: inputs.build-mode == 'autobuild'
+        # github/codeql-action/autobuild@v3.27.5
+        uses: github/codeql-action/autobuild@4f3212b61783c3c68e8309a0f18a699764811cda
+
+      - name: Manual Build
+        if: inputs.build-mode == 'manual'
+        run: |
+          BUILD_CMD="${{ inputs.build-command }}"
+          if [ -z "$BUILD_CMD" ]; then
+            echo "❌ build-mode is 'manual' but build-command is empty"
+            exit 1
+          fi
+          echo "Running build command: $BUILD_CMD"
+          eval "$BUILD_CMD"
+
+      - name: Perform CodeQL Analysis
+        # github/codeql-action/analyze@v3.27.5
+        uses: github/codeql-action/analyze@4f3212b61783c3c68e8309a0f18a699764811cda
+        with:
+          category: "/language:${{ matrix.language }}"
+          output: sarif-results
+          upload: true
