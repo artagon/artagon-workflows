@@ -72,7 +72,8 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Get version
         id: get_version
@@ -92,7 +93,8 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: softprops/action-gh-release@v1
+        # softprops/action-gh-release@v2.2.0
+        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
         with:
           tag_name: ${{ github.ref }}
           name: Release ${{ steps.get_version.outputs.version }}
@@ -108,7 +110,8 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
@@ -118,7 +121,8 @@ jobs:
 
       - name: Install Nix
         if: steps.check-nix.outputs.has_nix == 'true'
-        uses: cachix/install-nix-action@v24
+        # cachix/install-nix-action@v30
+        uses: cachix/install-nix-action@08dcb3a5e62fa31e2eb71ca1c1a4ae1b42a8f4b4
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
@@ -173,7 +177,8 @@ jobs:
           dpkg-deb --build --root-owner-group debian-root ${PROJECT}_${VERSION}_amd64.deb
 
       - name: Upload DEB
-        uses: softprops/action-gh-release@v1
+        # softprops/action-gh-release@v2.2.0
+        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
         with:
           files: "*.deb"
 
@@ -185,7 +190,8 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
@@ -238,7 +244,8 @@ jobs:
           cp ~/rpmbuild/RPMS/x86_64/*.rpm .
 
       - name: Upload RPM
-        uses: softprops/action-gh-release@v1
+        # softprops/action-gh-release@v2.2.0
+        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
         with:
           files: "*.rpm"
 
@@ -250,15 +257,28 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build gcc file wget fuse libfuse2
-          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          sudo apt-get install -y cmake ninja-build gcc file fuse libfuse2
+
+          # Download linuxdeploy with certificate validation
+          # Using 'continuous' tag for latest build
+          # TODO: Consider pinning to specific release (e.g., 1-alpha-20220822)
+          curl --fail-with-body \
+            --location \
+            --silent \
+            --show-error \
+            --proto '=https' \
+            --tlsv1.3 \
+            --output linuxdeploy-x86_64.AppImage \
+            "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+
           chmod +x linuxdeploy-x86_64.AppImage
 
       - name: Build
@@ -290,7 +310,8 @@ jobs:
           mv *.AppImage ${PROJECT}-${{ needs.create-release.outputs.version }}-x86_64.AppImage
 
       - name: Upload AppImage
-        uses: softprops/action-gh-release@v1
+        # softprops/action-gh-release@v2.2.0
+        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
         with:
           files: "*.AppImage"
 
@@ -302,7 +323,8 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
@@ -342,7 +364,8 @@ jobs:
           fi
 
       - name: Upload DMG
-        uses: softprops/action-gh-release@v1
+        # softprops/action-gh-release@v2.2.0
+        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
         with:
           files: "*.dmg"
 
@@ -354,12 +377,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
       - name: Setup MSVC
-        uses: ilammy/msvc-dev-cmd@v1
+        # ilammy/msvc-dev-cmd@v1.13.0
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
 
       - name: Build
         run: |
@@ -374,7 +399,8 @@ jobs:
           Compress-Archive -Path build\${{ env.BUILD_TYPE }}\* -DestinationPath "${PROJECT}-${VERSION}-windows-x64.zip"
 
       - name: Upload ZIP
-        uses: softprops/action-gh-release@v1
+        # softprops/action-gh-release@v2.2.0
+        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
         with:
           files: "*.zip"
 
@@ -385,7 +411,8 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
@@ -398,6 +425,7 @@ jobs:
               -czf ${PROJECT}-${VERSION}-source.tar.gz .
 
       - name: Upload source tarball
-        uses: softprops/action-gh-release@v1
+        # softprops/action-gh-release@v2.2.0
+        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
         with:
           files: "*-source.tar.gz"

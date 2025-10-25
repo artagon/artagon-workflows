@@ -1,0 +1,250 @@
+# Dependabot Configuration for artagon-workflows
+#
+# This configuration enables automated dependency updates for:
+# - GitHub Actions (workflow dependencies)
+# - Git submodules (.legal submodule)
+#
+# Dependabot will:
+# - Create PRs for action updates (weekly check)
+# - Pin actions to specific commit SHAs
+# - Include changelog and release notes
+# - Alert on security vulnerabilities
+#
+# Documentation: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+
+version: 2
+
+updates:
+  # GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "02:00"
+      timezone: "America/New_York"
+
+    # Limit open PRs to avoid overwhelming maintainers
+    open-pull-requests-limit: 10
+
+    # Reviewers and assignees
+    reviewers:
+      - "artagon/workflows-team"
+    assignees:
+      - "artagon/workflows-team"
+
+    # Labels for organization
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "security"
+      - "automated"
+
+    # Commit message prefix following semantic versioning
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+
+    # Rebase strategy for PRs
+    rebase-strategy: "auto"
+
+    # Group related updates
+    groups:
+      # Group all official GitHub actions together
+      github-actions:
+        patterns:
+          - "actions/*"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Group security-related actions separately for priority review
+      security-actions:
+        patterns:
+          - "github/codeql-action/*"
+          - "aquasecurity/trivy-action"
+          - "ossf/*"
+
+      # Group build system actions
+      build-tools:
+        patterns:
+          - "bazelbuild/*"
+          - "cachix/*"
+
+    # Ignore specific updates (if needed)
+    ignore:
+      # Example: Pin to specific major version
+      # - dependency-name: "actions/checkout"
+      #   update-types: ["version-update:semver-major"]
+
+    # Target branch for PRs
+    target-branch: "main"
+
+    # Allow both direct and indirect updates
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+
+    # Milestone for tracking
+    # milestone: 10
+
+  # Git submodules (.legal license management)
+  - package-ecosystem: "gitsubmodule"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "America/New_York"
+
+    open-pull-requests-limit: 3
+
+    reviewers:
+      - "artagon/workflows-team"
+
+    labels:
+      - "dependencies"
+      - "submodules"
+      - "legal"
+
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+    target-branch: "main"
+
+# Security vulnerability alerts
+# Enabled separately in repository settings:
+# Settings → Security → Dependabot alerts → Enable
+#
+# This will create alerts for:
+# - Known vulnerabilities in GitHub Actions
+# - Malicious actions flagged by GitHub
+# - Supply chain security issues
+
+# Advanced Configuration Notes:
+#
+# 1. **Dependency Groups**: Actions are grouped by category for easier review
+#    - GitHub official actions receive minor/patch updates together
+#    - Security actions are reviewed separately
+#    - Build tools are grouped for compatibility testing
+#
+# 2. **Pull Request Strategy**:
+#    - Weekly schedule reduces noise while staying current
+#    - Monday 2 AM ET chosen for review on Monday morning
+#    - Limit of 10 PRs prevents overwhelming maintainers
+#
+# 3. **Semantic Commits**:
+#    - Prefix: "chore" (non-breaking dependency updates)
+#    - Scope: Included automatically (e.g., "chore(deps): update actions/checkout")
+#
+# 4. **Rebase Strategy**:
+#    - Auto-rebase keeps PRs current with main branch
+#    - Prevents merge conflicts during review period
+#
+# 5. **Security Priority**:
+#    - Separate group for security actions
+#    - Security alerts enabled in repository settings
+#    - Critical security updates should be merged ASAP
+#
+# 6. **Testing Integration**:
+#    - All Dependabot PRs must pass CI tests
+#    - Configure branch protection rules to require:
+#      * Workflow linting
+#      * Unit tests
+#      * Integration tests
+#      * Security validation
+#
+# 7. **Review Process**:
+#    - Automated tests verify action updates don't break workflows
+#    - Reviewers should check:
+#      * Changelog for breaking changes
+#      * Release notes for new features
+#      * Security advisories
+#      * Compatibility with current workflows
+#
+# 8. **Approval Automation** (optional):
+#    - Consider auto-merging patch updates if tests pass
+#    - Require manual review for minor/major updates
+#    - Example workflow: .github/workflows/dependabot_auto_merge.yml
+#
+# Example auto-merge workflow:
+#
+# name: Dependabot Auto-merge
+# on: pull_request
+# jobs:
+#   auto-merge:
+#     if: github.actor == 'dependabot[bot]'
+#     runs-on: ubuntu-latest
+#     permissions:
+#       contents: write
+#       pull-requests: write
+#     steps:
+#       - name: Auto-merge patch updates
+#         run: |
+#           if [[ "${{ github.event.pull_request.title }}" =~ "chore(deps): bump" ]]; then
+#             gh pr merge --auto --squash "$PR_URL"
+#           fi
+#         env:
+#           PR_URL: ${{ github.event.pull_request.html_url }}
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+# Monitoring Dependabot:
+#
+# 1. View Dependabot status:
+#    Repository → Insights → Dependency graph → Dependabot
+#
+# 2. Check for alerts:
+#    Repository → Security → Dependabot alerts
+#
+# 3. Review update logs:
+#    Settings → Security → Dependabot → View logs
+#
+# 4. Troubleshooting:
+#    - Check logs if PRs aren't created
+#    - Verify repository permissions
+#    - Ensure workflows are valid YAML
+#    - Check rate limits (60 requests/hour)
+
+# Customization Examples:
+#
+# ## Update specific actions more frequently:
+# - package-ecosystem: "github-actions"
+#   directory: "/"
+#   schedule:
+#     interval: "daily"
+#   allow:
+#     - dependency-name: "github/codeql-action/*"
+#
+# ## Ignore specific versions:
+# ignore:
+#   - dependency-name: "actions/checkout"
+#     versions: ["v3.x"]
+#
+# ## Target different branch:
+# target-branch: "develop"
+#
+# ## Custom commit message:
+# commit-message:
+#   prefix: "build"
+#   prefix-development: "build"
+
+# Best Practices:
+#
+# 1. **Review Weekly**: Allocate time each Monday to review PRs
+# 2. **Test Thoroughly**: Run full test suite on Dependabot PRs
+# 3. **Read Changelogs**: Check for breaking changes before merging
+# 4. **Security First**: Prioritize security updates over features
+# 5. **Keep Current**: Don't let updates pile up (technical debt)
+# 6. **Document Issues**: If an update breaks workflows, document why
+# 7. **Pin Strategically**: Use commit SHAs for security, semantic versions for clarity
+# 8. **Monitor Alerts**: Check security alerts daily
+# 9. **Automate Testing**: Ensure CI catches issues before merge
+# 10. **Communicate**: Notify consumers of breaking changes
+
+# Related Files:
+# - ACTION_VERSIONS.md: Reference for current action versions
+# - SECURITY_AUDIT.md: Security audit findings
+# - TESTING_STRATEGY.md: How to test workflow changes
+# - .github/workflows/test_*.yml: Test workflows for validation

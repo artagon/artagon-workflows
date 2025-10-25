@@ -37,13 +37,18 @@ on:
 jobs:
   security-scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write  # Required for SARIF upload
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Set up JDK ${{ inputs.java-version }}
-        uses: actions/setup-java@v4
+        # actions/setup-java@v4.5.0
+        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b
         with:
           java-version: ${{ inputs.java-version }}
           distribution: ${{ inputs.java-distribution }}
@@ -69,7 +74,8 @@ jobs:
 
       - name: Upload Dependency Check report
         if: always() && inputs.run-dependency-check
-        uses: actions/upload-artifact@v4
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: dependency-check-report
           path: target/dependency-check-report.html
@@ -77,7 +83,8 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         if: inputs.run-trivy-scan
-        uses: aquasecurity/trivy-action@master
+        # aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@69c4ceb78ce0f6ebbb0ea7c9bc6f9d46423d5d62
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -87,7 +94,8 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security tab
         if: always() && inputs.run-trivy-scan
-        uses: github/codeql-action/upload-sarif@v3
+        # github/codeql-action/upload-sarif@v3.27.6
+        uses: github/codeql-action/upload-sarif@662472033e021d55d94146f66f6058822b0b39fd
         with:
           sarif_file: 'trivy-results.sarif'
 
@@ -101,7 +109,8 @@ jobs:
 
       - name: Upload SpotBugs report
         if: always()
-        uses: actions/upload-artifact@v4
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: spotbugs-report
           path: |

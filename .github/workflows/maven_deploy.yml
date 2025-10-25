@@ -45,16 +45,21 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read       # Checkout code
+      packages: write      # Deploy artifacts
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
           submodules: recursive
 
       - name: Set up JDK ${{ inputs.java-version }}
-        uses: actions/setup-java@v4
+        # actions/setup-java@v4.5.0
+        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b
         with:
           java-version: ${{ inputs.java-version }}
           distribution: ${{ inputs.java-distribution }}
@@ -82,7 +87,8 @@ jobs:
 
       - name: Upload deployment artifacts
         if: success()
-        uses: actions/upload-artifact@v4
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: deployed-artifacts
           path: |

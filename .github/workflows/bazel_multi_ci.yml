@@ -44,6 +44,9 @@ jobs:
   build-test:
     name: Build and Test (${{ matrix.os }}, ${{ matrix.config }})
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read       # Checkout code
+      packages: read       # Download artifacts (if needed)
     strategy:
       fail-fast: false
       matrix:
@@ -52,7 +55,8 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
@@ -67,17 +71,20 @@ jobs:
 
       - name: Install Nix
         if: steps.check-nix.outputs.has_nix == 'true'
-        uses: cachix/install-nix-action@v24
+        # cachix/install-nix-action@v30
+        uses: cachix/install-nix-action@08dcb3a5e62fa31e2eb71ca1c1a4ae1b42a8f4b4
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
       - name: Setup Bazelisk (non-Nix)
         if: steps.check-nix.outputs.has_nix == 'false'
-        uses: bazelbuild/setup-bazelisk@v2
+        # bazelbuild/setup-bazelisk@v3.0.1
+        uses: bazelbuild/setup-bazelisk@b63ef97e907d9f0dc8c6f99a88a89f63d533addc
 
       - name: Mount Bazel cache
-        uses: actions/cache@v4
+        # actions/cache@v4.1.2
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a
         with:
           path: |
             ~/.cache/bazel
@@ -110,7 +117,8 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: test-results-${{ matrix.os }}-${{ matrix.config }}
           path: bazel-testlogs/
@@ -119,18 +127,24 @@ jobs:
   build-windows:
     name: Build and Test (Windows)
     runs-on: windows-latest
+    permissions:
+      contents: read
+      packages: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
       - name: Setup Bazelisk
-        uses: bazelbuild/setup-bazelisk@v2
+        # bazelbuild/setup-bazelisk@v3.0.1
+        uses: bazelbuild/setup-bazelisk@b63ef97e907d9f0dc8c6f99a88a89f63d533addc
 
       - name: Mount Bazel cache
-        uses: actions/cache@v4
+        # actions/cache@v4.1.2
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a
         with:
           path: |
             ~/.cache/bazel
@@ -149,10 +163,13 @@ jobs:
     name: Code Coverage
     runs-on: ubuntu-latest
     if: inputs.enable-coverage
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
@@ -167,14 +184,16 @@ jobs:
 
       - name: Install Nix
         if: steps.check-nix.outputs.has_nix == 'true'
-        uses: cachix/install-nix-action@v24
+        # cachix/install-nix-action@v30
+        uses: cachix/install-nix-action@08dcb3a5e62fa31e2eb71ca1c1a4ae1b42a8f4b4
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
       - name: Setup Bazelisk (non-Nix)
         if: steps.check-nix.outputs.has_nix == 'false'
-        uses: bazelbuild/setup-bazelisk@v2
+        # bazelbuild/setup-bazelisk@v3.0.1
+        uses: bazelbuild/setup-bazelisk@b63ef97e907d9f0dc8c6f99a88a89f63d533addc
 
       - name: Install lcov
         run: sudo apt-get update && sudo apt-get install -y lcov
@@ -191,7 +210,8 @@ jobs:
         run: bazel coverage --config=coverage --combined_report=lcov ${{ inputs.targets }}
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        # codecov/codecov-action@v5.0.7
+        uses: codecov/codecov-action@015f24e6818733317a2da2edd6290ab26238649a
         with:
           files: ./bazel-out/_coverage/_coverage_report.dat
           fail_ci_if_error: false
@@ -200,15 +220,37 @@ jobs:
   buildifier:
     name: Buildifier (Format Check)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Setup Buildifier
         run: |
-          wget -O /usr/local/bin/buildifier https://github.com/bazelbuild/buildtools/releases/download/v6.4.0/buildifier-linux-amd64
-          chmod +x /usr/local/bin/buildifier
+          # v6.4.0 corresponds to commit 42968f9
+          BUILDIFIER_VERSION="6.4.0"
+          BUILDIFIER_SHA256="be63db12899f48600bad94051123b1fd7b5251e7661b9168582ce52396132e92"
+
+          # Download with certificate validation (curl validates certs by default)
+          curl --fail-with-body \
+            --location \
+            --silent \
+            --show-error \
+            --proto '=https' \
+            --tlsv1.3 \
+            --output /tmp/buildifier \
+            "https://github.com/bazelbuild/buildtools/releases/download/v${BUILDIFIER_VERSION}/buildifier-linux-amd64"
+
+          # Verify SHA256 checksum
+          echo "${BUILDIFIER_SHA256}  /tmp/buildifier" | sha256sum --check
+
+          sudo mv /tmp/buildifier /usr/local/bin/buildifier
+          sudo chmod +x /usr/local/bin/buildifier
+
+          buildifier --version
 
       - name: Check formatting
         run: |
@@ -217,13 +259,17 @@ jobs:
   bazel-query:
     name: Bazel Query Analysis
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Setup Bazelisk
-        uses: bazelbuild/setup-bazelisk@v2
+        # bazelbuild/setup-bazelisk@v3.0.1
+        uses: bazelbuild/setup-bazelisk@b63ef97e907d9f0dc8c6f99a88a89f63d533addc
 
       - name: Query targets
         run: |
@@ -239,7 +285,8 @@ jobs:
 
       - name: Upload dependency graph
         if: always()
-        uses: actions/upload-artifact@v4
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: dependency-graph
           path: deps.dot

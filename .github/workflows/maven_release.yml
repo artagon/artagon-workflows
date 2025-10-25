@@ -55,6 +55,9 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write      # Create tags, push commits
+      packages: write      # Deploy artifacts
     outputs:
       tag: ${{ steps.create-tag.outputs.tag }}
       version: ${{ steps.set-release-version.outputs.release-version }}
@@ -81,12 +84,14 @@ jobs:
           echo "✅ Running from release branch: $BRANCH"
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
 
       - name: Set up JDK ${{ inputs.java-version }}
-        uses: actions/setup-java@v4
+        # actions/setup-java@v4.5.0
+        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b
         with:
           java-version: ${{ inputs.java-version }}
           distribution: ${{ inputs.java-distribution }}
@@ -101,6 +106,28 @@ jobs:
         run: |
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import
           gpg --list-secret-keys --keyid-format LONG
+
+      - name: Configure Maven GPG settings
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings>
+            <profiles>
+              <profile>
+                <id>gpg-config</id>
+                <properties>
+                  <gpg.passphrase>${GPG_PASSPHRASE}</gpg.passphrase>
+                </properties>
+              </profile>
+            </profiles>
+            <activeProfiles>
+              <activeProfile>gpg-config</activeProfile>
+            </activeProfiles>
+          </settings>
+          EOF
+          chmod 600 ~/.m2/settings.xml
 
       - name: Configure Git
         run: |
@@ -146,10 +173,8 @@ jobs:
         env:
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           mvn clean deploy -P${{ inputs.deploy-profile }} -DskipTests \
-            -Dgpg.passphrase="$GPG_PASSPHRASE" \
             --batch-mode --no-transfer-progress
 
       - name: Create git tag
@@ -192,7 +217,8 @@ jobs:
 
       - name: Create GitHub Release
         if: inputs.create-github-release
-        uses: softprops/action-gh-release@v1
+        # softprops/action-gh-release@v2.2.0
+        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
         with:
