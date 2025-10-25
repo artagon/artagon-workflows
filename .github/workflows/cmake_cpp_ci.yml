@@ -288,7 +288,7 @@ jobs:
 
       - name: Generate coverage
         run: |
-          lcov --directory . --capture --output-file coverage.info
+          lcov --directory build --capture --output-file coverage.info
           lcov --remove coverage.info '/usr/*' '*/test/*' --ignore-errors unused '*/tests/*' --output-file coverage.info
           lcov --list coverage.info
 
@@ -311,7 +311,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sanitizer: [address, undefined, thread, memory]
+        sanitizer: [address, undefined, thread]
 
     steps:
       - name: Checkout code

@@ -297,7 +297,7 @@ jobs:
 
       - name: Generate coverage
         run: |
-          lcov --directory . --capture --output-file coverage.info
+          lcov --directory build --capture --output-file coverage.info
           lcov --remove coverage.info '/usr/*' '*/test/*' --ignore-errors unused --output-file coverage.info
           lcov --list coverage.info
 
