@@ -251,11 +251,33 @@ jobs:
     steps: [...]
 ```
 
+### 8. Implement SBOM Automation and Compliance
+
+**Severity**: HIGH
+**Effort**: 6 hours
+
+**Artifacts**:
+- SBOM_REQ.md (requirements)
+- SBOM_IMPLEMENTATION.md (implementation plan)
+- SBOM workflows, scripts, configs
+
+**Tasks**:
+- [ ] Design hardened container environment (Chainguard primary, Distroless fallback)
+- [ ] Implement SBOM workflows for Maven, C, C++, Rust projects
+- [ ] Integrate vulnerability scanning, license checks, signing, publishing
+- [ ] Generate documentation and compliance mapping (NTIA, NIST SSDF, EU CRA, SLSA)
+- [ ] Validate runtime (<5 minutes) using sample projects
+
+**Dependencies**:
+- Secrets: Cosign keys/OIDC, AWS credentials, Dependency-Track token
+- Self-hosted runners with required tooling and registry access
+- S3 bucket, ghcr namespace, Dependency-Track project
+
 ---
 
 ## High Priority (Week 3-4) - 40 hours
 
-### 8. Implement Workflow Linting (Level 1 Testing)
+### 9. Implement Workflow Linting (Level 1 Testing)
 
 **Effort**: 8 hours
 **Reference**: TESTING_STRATEGY.md

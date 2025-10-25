@@ -31,6 +31,8 @@ When you start working on this project:
 - Add explicit permissions (see templates in .model-context/skills/github-workflows.md)
 - Validate all user inputs (see examples in context.md)
 - Follow mono-repo strategy (REPOSITORY_STRATEGY.md)
+- Review SBOM requirements (SBOM_REQ.md) before supply-chain or SBOM work
+- Consult SBOM_IMPLEMENTATION.md for implementation guidance
 ```
 
 ---
@@ -504,6 +506,8 @@ done
 | SECURITY_AUDIT.md | Vulnerability details | For security work |
 | ACTION_VERSIONS.md | Action SHA reference | When pinning actions |
 | TESTING_STRATEGY.md | Testing framework | When writing tests |
+| SBOM_REQ.md | SBOM requirements and compliance scope | Before SBOM or supply-chain tasks |
+| SBOM_IMPLEMENTATION.md | SBOM implementation plan and tooling | During SBOM workflow development |
 | skills/github-workflows.md | Security best practices | For all workflow changes |
 
 ### File Locations

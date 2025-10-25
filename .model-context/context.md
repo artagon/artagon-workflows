@@ -82,6 +82,16 @@ This folder contains comprehensive AI model instructions:
    - Day-to-day development workflow guidance
    - Commit hygiene and review expectations
 
+10. **SBOM_REQ.md**
+    - Requirements for SBOM workflows across Java, C, C++, Rust
+    - Compliance expectations (NIST SSDF, EU CRA, SLSA Level 3)
+    - Storage, signing, and distribution targets
+
+11. **SBOM_IMPLEMENTATION.md**
+    - Implementation plan for SBOM automation
+    - Tooling choices and workflow architecture
+    - Documentation and rollout strategy
+
 ---
 
 ## 🚨 CRITICAL CONTEXT FOR AI MODELS
