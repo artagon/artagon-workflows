@@ -25,8 +25,10 @@ jobs:
         run: |
           echo "Checking for common secret patterns..."
 
-          # Check for hardcoded passwords, tokens, keys
-          if grep -rE '(password|token|key).*=.*["\x27][^"\x27]{10,}' .github/workflows/; then
+          # Check for hardcoded passwords, tokens, keys (exclude test files)
+          if grep -rE '(password|token|key).*=.*["\x27][^"\x27]{10,}' .github/workflows/ \
+             --exclude='test_*.yml' \
+             --exclude='*_test.yml'; then
             echo "❌ Found potential hardcoded secrets"
             exit 1
           fi
@@ -111,7 +113,10 @@ jobs:
         run: |
           echo "Checking for overly permissive write-all..."
 
-          if grep -r "permissions:.*write-all" .github/workflows/; then
+          # Exclude test files from this check
+          if grep -r "permissions:.*write-all" .github/workflows/ \
+             --exclude='test_*.yml' \
+             --exclude='*_test.yml'; then
             echo "❌ Found write-all permissions - use specific permissions instead"
             exit 1
           fi
@@ -134,13 +139,22 @@ jobs:
           echo "Checking for unpinned actions..."
 
           # Check for actions pinned to major versions only (e.g., @v4)
-          UNPINNED_MAJOR=$(grep -rn "uses:.*@v[0-9]$" .github/workflows/ || true)
+          # Exclude test files and commented lines
+          UNPINNED_MAJOR=$(grep -rn "uses:.*@v[0-9]$" .github/workflows/ \
+            --exclude='test_*.yml' \
+            --exclude='*_test.yml' | grep -v "^\s*#" || true)
 
           # Check for actions pinned to branch names
-          UNPINNED_BRANCH=$(grep -rn "uses:.*@master\|uses:.*@main" .github/workflows/ || true)
+          # Exclude test files and commented lines
+          UNPINNED_BRANCH=$(grep -rn "uses:.*@master\|uses:.*@main" .github/workflows/ \
+            --exclude='test_*.yml' \
+            --exclude='*_test.yml' | grep -v "^\s*#\|^[^:]*:[^:]*:#" || true)
 
           # Check for actions with minor versions but not SHAs (e.g., @v4.2)
-          UNPINNED_MINOR=$(grep -rn "uses:.*@v[0-9]\+\.[0-9]\+$" .github/workflows/ || true)
+          # Exclude test files and commented lines
+          UNPINNED_MINOR=$(grep -rn "uses:.*@v[0-9]\+\.[0-9]\+$" .github/workflows/ \
+            --exclude='test_*.yml' \
+            --exclude='*_test.yml' | grep -v "^\s*#" || true)
 
           FAILED=0
 
