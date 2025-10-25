@@ -1,0 +1,200 @@
+name: Security Testing
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+
+jobs:
+  secret-scanning:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Scan for hardcoded secrets
+        run: |
+          echo "Checking for common secret patterns..."
+
+          # Check for hardcoded passwords, tokens, keys
+          if grep -rE '(password|token|key).*=.*["\x27][^"\x27]{10,}' .github/workflows/; then
+            echo "❌ Found potential hardcoded secrets"
+            exit 1
+          fi
+
+          # Check for GitHub personal access tokens
+          if grep -rE 'ghp_[a-zA-Z0-9]{36}' .github/workflows/; then
+            echo "❌ Found GitHub personal access token"
+            exit 1
+          fi
+
+          # Check for AWS access keys
+          if grep -rE 'AKIA[0-9A-Z]{16}' .github/workflows/; then
+            echo "❌ Found AWS access key"
+            exit 1
+          fi
+
+          echo "✅ No hardcoded secrets detected"
+
+      - name: Verify secrets use GitHub Secrets
+        run: |
+          echo "Verifying all secrets use \${{ secrets.* }} syntax..."
+
+          # Find lines with sensitive keywords
+          MATCHES=$(grep -rn 'password\|token\|key\|passphrase' .github/workflows/ || true)
+
+          if [ -n "$MATCHES" ]; then
+            echo "Found sensitive keywords, verifying they use GitHub Secrets..."
+            echo "$MATCHES" | while IFS= read -r line; do
+              # Skip comments and if it uses secrets syntax, it's OK
+              if echo "$line" | grep -qE '^\s*#|secrets\.' ; then
+                continue
+              fi
+              # Skip if it's just a description or input name
+              if echo "$line" | grep -qE 'description:|required:|type:|default:' ; then
+                continue
+              fi
+              # If we get here, it might be a problem
+              echo "⚠️  Check this line: $line"
+            done
+          fi
+
+          echo "✅ Secret usage verification complete"
+
+  permission-validation:
+    name: Permission Validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Check for permission blocks
+        run: |
+          echo "Checking for explicit permissions in workflows..."
+          MISSING_PERMS=0
+
+          for workflow in .github/workflows/*.yml; do
+            # Skip test workflows and workflows that call other workflows
+            if echo "$workflow" | grep -qE 'test_|_test\.yml'; then
+              continue
+            fi
+
+            if ! grep -q "permissions:" "$workflow"; then
+              echo "⚠️  Missing permissions block: $workflow"
+              echo "   Add explicit permissions to follow least-privilege principle"
+              MISSING_PERMS=$((MISSING_PERMS + 1))
+            fi
+          done
+
+          if [ $MISSING_PERMS -gt 0 ]; then
+            echo ""
+            echo "Found $MISSING_PERMS workflow(s) without explicit permissions"
+            echo "This is a warning - workflows should specify permissions explicitly"
+          else
+            echo "✅ All workflows have explicit permissions"
+          fi
+
+      - name: Verify no write-all permissions
+        run: |
+          echo "Checking for overly permissive write-all..."
+
+          if grep -r "permissions:.*write-all" .github/workflows/; then
+            echo "❌ Found write-all permissions - use specific permissions instead"
+            exit 1
+          fi
+
+          echo "✅ No write-all permissions found"
+
+  action-pinning-validation:
+    name: Action Pinning Validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Check for unpinned actions
+        run: |
+          echo "Checking for unpinned actions..."
+
+          # Check for actions pinned to major versions only (e.g., @v4)
+          UNPINNED_MAJOR=$(grep -rn "uses:.*@v[0-9]$" .github/workflows/ || true)
+
+          # Check for actions pinned to branch names
+          UNPINNED_BRANCH=$(grep -rn "uses:.*@master\|uses:.*@main" .github/workflows/ || true)
+
+          # Check for actions with minor versions but not SHAs (e.g., @v4.2)
+          UNPINNED_MINOR=$(grep -rn "uses:.*@v[0-9]\+\.[0-9]\+$" .github/workflows/ || true)
+
+          FAILED=0
+
+          if [ -n "$UNPINNED_MAJOR" ]; then
+            echo "❌ Found actions pinned to major versions only:"
+            echo "$UNPINNED_MAJOR"
+            echo ""
+            FAILED=1
+          fi
+
+          if [ -n "$UNPINNED_BRANCH" ]; then
+            echo "❌ Found actions pinned to branch names:"
+            echo "$UNPINNED_BRANCH"
+            echo ""
+            FAILED=1
+          fi
+
+          if [ -n "$UNPINNED_MINOR" ]; then
+            echo "❌ Found actions pinned to minor versions:"
+            echo "$UNPINNED_MINOR"
+            echo ""
+            FAILED=1
+          fi
+
+          if [ $FAILED -eq 1 ]; then
+            echo "All actions must be pinned to commit SHAs for security."
+            echo "Example: uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683"
+            echo "See .model-context/ACTION_VERSIONS.md for reference."
+            exit 1
+          fi
+
+          echo "✅ All actions are pinned to commit SHAs"
+
+      - name: Verify SHA format
+        run: |
+          echo "Verifying all SHAs are 40 characters..."
+
+          # Extract all uses: lines with @ references
+          USES_LINES=$(grep -rh "uses:.*@" .github/workflows/ | grep -v "^\s*#" || true)
+
+          if [ -n "$USES_LINES" ]; then
+            echo "$USES_LINES" | while IFS= read -r line; do
+              # Extract the reference after @
+              REF=$(echo "$line" | sed -n 's/.*@\([a-f0-9]\{40\}\).*/\1/p')
+
+              if [ -z "$REF" ]; then
+                # Check if it's a local workflow reference (starts with ./)
+                if echo "$line" | grep -q "uses:.*\.\/"; then
+                  continue
+                fi
+
+                echo "⚠️  Non-SHA reference found: $line"
+              fi
+            done
+          fi
+
+          echo "✅ SHA format verification complete"

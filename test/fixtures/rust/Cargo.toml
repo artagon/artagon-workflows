@@ -1,0 +1,14 @@
+[package]
+name = "rust-test-fixture"
+version = "1.0.0"
+edition = "2021"
+
+[lib]
+name = "greeter"
+path = "src/lib.rs"
+
+[[bin]]
+name = "hello"
+path = "src/main.rs"
+
+[dependencies]
