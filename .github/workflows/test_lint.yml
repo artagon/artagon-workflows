@@ -1,0 +1,194 @@
+name: Workflow Linting
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/*.yml'
+      - '.github/workflows/test_lint.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/*.yml'
+      - '.github/workflows/test_lint.yml'
+
+jobs:
+  actionlint:
+    name: Lint GitHub Actions Workflows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Install actionlint
+        run: |
+          # Download actionlint v1.7.3
+          # Secure download over TLS 1.3 from official GitHub releases
+          VERSION="1.7.3"
+
+          curl --fail-with-body \
+            --location \
+            --silent \
+            --show-error \
+            --proto '=https' \
+            --tlsv1.3 \
+            --output /tmp/actionlint.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${VERSION}/actionlint_${VERSION}_linux_amd64.tar.gz"
+
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp
+          sudo mv /tmp/actionlint /usr/local/bin/
+          actionlint --version
+
+      - name: Run actionlint
+        run: |
+          # Run actionlint without shellcheck to avoid info/warning noise
+          # Only fail on actual actionlint errors
+          actionlint -color -verbose -shellcheck="" .github/workflows/*.yml
+
+  yamllint:
+    name: Validate YAML Syntax
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Run yamllint
+        run: yamllint .github/workflows/
+
+  security-validation:
+    name: Security Validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Check for unpinned actions
+        run: |
+          echo "Checking for unpinned GitHub Actions..."
+
+          # Check for @vX patterns (unpinned), excluding commented lines
+          UNPINNED=$(grep -rn "uses:.*@v[0-9]$" .github/workflows/ | grep -v "^[^:]*:[^:]*:#" || true)
+
+          # Check for @master or @main, excluding commented lines
+          UNPINNED_BRANCH=$(grep -rn "uses:.*@\(master\|main\)$" .github/workflows/ | grep -v "^[^:]*:[^:]*:#" || true)
+
+          if [ -n "$UNPINNED" ] || [ -n "$UNPINNED_BRANCH" ]; then
+            echo "❌ Found unpinned actions:"
+            echo "$UNPINNED"
+            echo "$UNPINNED_BRANCH"
+            echo ""
+            echo "All actions must be pinned to commit SHAs."
+            echo "See .model-context/ACTION_VERSIONS.md for reference."
+            exit 1
+          fi
+
+          echo "✅ All actions are pinned to commit SHAs"
+
+      - name: Check for hardcoded secrets
+        run: |
+          echo "Scanning for hardcoded secrets..."
+
+          # Common secret patterns, excluding test_lint.yml itself
+          if grep -rE '(password|token|key|secret).*=.*["\x27][^"\x27]{10,}' .github/workflows/ \
+             | grep -v "test_lint.yml"; then
+            echo "❌ Potential hardcoded secret found"
+            exit 1
+          fi
+
+          # GitHub token patterns
+          if grep -rE 'ghp_[a-zA-Z0-9]{36}' .github/workflows/; then
+            echo "❌ GitHub token found"
+            exit 1
+          fi
+
+          # AWS key patterns
+          if grep -rE 'AKIA[0-9A-Z]{16}' .github/workflows/; then
+            echo "❌ AWS key found"
+            exit 1
+          fi
+
+          echo "✅ No hardcoded secrets detected"
+
+      - name: Verify permissions blocks exist
+        run: |
+          echo "Checking for explicit permissions blocks..."
+
+          MISSING=0
+          for file in .github/workflows/*.yml; do
+            # Skip this test workflow itself
+            if [[ "$file" == *"test_lint.yml" ]]; then
+              continue
+            fi
+
+            if ! grep -q "permissions:" "$file"; then
+              echo "⚠️  Missing permissions block: $file"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+
+          if [ $MISSING -gt 0 ]; then
+            echo ""
+            echo "Found $MISSING workflow(s) without explicit permissions blocks."
+            echo "Add permissions blocks following least-privilege principle."
+            echo "This is a warning, not a failure (for now)."
+          else
+            echo "✅ All workflows have explicit permissions"
+          fi
+
+  summary:
+    name: Lint Summary
+    needs: [actionlint, yamllint, security-validation]
+    runs-on: ubuntu-latest
+    if: always()
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check results
+        run: |
+          echo "## Workflow Linting Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.actionlint.result }}" == "success" ]; then
+            echo "- ✅ actionlint: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ actionlint: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.yamllint.result }}" == "success" ]; then
+            echo "- ✅ yamllint: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ yamllint: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.security-validation.result }}" == "success" ]; then
+            echo "- ✅ Security validation: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ Security validation: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Fail if any required checks failed
+          if [ "${{ needs.actionlint.result }}" != "success" ] || \
+             [ "${{ needs.yamllint.result }}" != "success" ] || \
+             [ "${{ needs.security-validation.result }}" != "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Some checks failed. Please fix the issues above." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All workflow validation checks passed!" >> $GITHUB_STEP_SUMMARY

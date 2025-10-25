@@ -39,9 +39,39 @@ env:
   BUILD_TYPE: Release
 
 jobs:
+  validate-inputs:
+    name: Validate Inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check workflow inputs
+        run: |
+          set -euo pipefail
+
+          CMAKE_OPTS="${{ inputs.cmake-options }}"
+          if ! echo "$CMAKE_OPTS" | grep -qE '^[-A-Za-z0-9_./=:," ]*$'; then
+            echo "❌ Invalid cmake-options: $CMAKE_OPTS"
+            echo "Allowed characters: letters, numbers, space, dash, underscore, dot, slash, colon, equals, comma, double quotes"
+            exit 1
+          fi
+
+          C_STANDARD="${{ inputs.c-standard }}"
+          if ! echo "$C_STANDARD" | grep -qE '^(11|17|23)$'; then
+            echo "❌ Invalid c-standard: $C_STANDARD"
+            echo "Allowed values: 11, 17, 23"
+            exit 1
+          fi
+
+          echo "✅ Input validation passed"
+
   build-linux:
     name: Build (${{ matrix.os }}, ${{ matrix.compiler }})
     runs-on: ${{ matrix.os }}
+    needs: validate-inputs
+    permissions:
+      contents: read
+      packages: read
     strategy:
       fail-fast: false
       matrix:
@@ -57,7 +87,8 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
@@ -72,7 +103,8 @@ jobs:
 
       - name: Install Nix
         if: steps.check-nix.outputs.has_nix == 'true'
-        uses: cachix/install-nix-action@v24
+        # cachix/install-nix-action@v30
+        uses: cachix/install-nix-action@08dcb3a5e62fa31e2eb71ca1c1a4ae1b42a8f4b4
         with:
           nix_path: nixpkgs=channel:nixos-unstable
           extra_nix_config: |
@@ -149,7 +181,8 @@ jobs:
             --inline-suppr -I include src/ 2>&1 | tee cppcheck.log
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: build-${{ matrix.os }}-${{ matrix.compiler }}
           path: |
@@ -160,6 +193,10 @@ jobs:
   build-multiplatform:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    needs: validate-inputs
+    permissions:
+      contents: read
+      packages: read
     strategy:
       fail-fast: false
       matrix:
@@ -167,7 +204,8 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
@@ -177,7 +215,8 @@ jobs:
 
       - name: Setup MSVC (Windows)
         if: matrix.os == 'windows-latest'
-        uses: ilammy/msvc-dev-cmd@v1
+        # ilammy/msvc-dev-cmd@v1.13.0
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
 
       - name: Configure CMake (Unix)
         if: matrix.os != 'windows-latest'
@@ -191,9 +230,9 @@ jobs:
       - name: Configure CMake (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          cmake -B build `
-            -G "Visual Studio 17 2022" `
-            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} `
+          cmake -B build \
+            -G "Visual Studio 17 2022" \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             ${{ inputs.cmake-options }}
 
       - name: Build (Unix)
@@ -209,7 +248,8 @@ jobs:
         run: ctest --output-on-failure --verbose -C ${{ env.BUILD_TYPE }}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: build-${{ matrix.os }}
           path: |
@@ -220,11 +260,16 @@ jobs:
   code-coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
+    needs: validate-inputs
     if: inputs.enable-coverage
+    permissions:
+      contents: read
+      packages: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
@@ -257,7 +302,8 @@ jobs:
           lcov --list coverage.info
 
       - name: Upload to Codecov
-        uses: codecov/codecov-action@v4
+        # codecov/codecov-action@v5.0.7
+        uses: codecov/codecov-action@015f24e6818733317a2da2edd6290ab26238649a
         with:
           files: ./coverage.info
           fail_ci_if_error: false
@@ -266,7 +312,11 @@ jobs:
   sanitizers:
     name: Sanitizers (${{ matrix.sanitizer }})
     runs-on: ubuntu-latest
+    needs: validate-inputs
     if: inputs.enable-sanitizers
+    permissions:
+      contents: read
+      packages: read
     strategy:
       fail-fast: false
       matrix:
@@ -274,7 +324,8 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
@@ -308,10 +359,15 @@ jobs:
   valgrind:
     name: Memory Check (Valgrind)
     runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
+      packages: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
@@ -340,10 +396,14 @@ jobs:
   format-check:
     name: Format Check
     runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Install clang-format
         run: |

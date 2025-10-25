@@ -52,7 +52,8 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Get version
         id: get_version
@@ -72,7 +73,8 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: softprops/action-gh-release@v1
+        # softprops/action-gh-release@v2.2.0
+        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
         with:
           tag_name: ${{ github.ref }}
           name: Release ${{ steps.get_version.outputs.version }}
@@ -87,7 +89,8 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
@@ -97,14 +100,16 @@ jobs:
 
       - name: Install Nix
         if: steps.check-nix.outputs.has_nix == 'true'
-        uses: cachix/install-nix-action@v24
+        # cachix/install-nix-action@v30
+        uses: cachix/install-nix-action@08dcb3a5e62fa31e2eb71ca1c1a4ae1b42a8f4b4
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
       - name: Setup Bazelisk (non-Nix)
         if: steps.check-nix.outputs.has_nix == 'false'
-        uses: bazelbuild/setup-bazelisk@v2
+        # bazelbuild/setup-bazelisk@v3.0.1
+        uses: bazelbuild/setup-bazelisk@b63ef97e907d9f0dc8c6f99a88a89f63d533addc
 
       - name: Build with Nix
         if: steps.check-nix.outputs.has_nix == 'true'
@@ -140,7 +145,8 @@ jobs:
           tar czf ../../${PROJECT}-${VERSION}-linux-x64.tar.gz *
 
       - name: Upload tarball
-        uses: softprops/action-gh-release@v1
+        # softprops/action-gh-release@v2.2.0
+        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
         with:
           files: "*.tar.gz"
 
@@ -170,7 +176,8 @@ jobs:
 
       - name: Upload DEB
         if: inputs.create-packages
-        uses: softprops/action-gh-release@v1
+        # softprops/action-gh-release@v2.2.0
+        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
         with:
           files: "*.deb"
 
@@ -181,7 +188,8 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
@@ -191,14 +199,16 @@ jobs:
 
       - name: Install Nix
         if: steps.check-nix.outputs.has_nix == 'true'
-        uses: cachix/install-nix-action@v24
+        # cachix/install-nix-action@v30
+        uses: cachix/install-nix-action@08dcb3a5e62fa31e2eb71ca1c1a4ae1b42a8f4b4
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
       - name: Setup Bazelisk (non-Nix)
         if: steps.check-nix.outputs.has_nix == 'false'
-        uses: bazelbuild/setup-bazelisk@v2
+        # bazelbuild/setup-bazelisk@v3.0.1
+        uses: bazelbuild/setup-bazelisk@b63ef97e907d9f0dc8c6f99a88a89f63d533addc
 
       - name: Build with Nix
         if: steps.check-nix.outputs.has_nix == 'true'
@@ -232,7 +242,8 @@ jobs:
           tar czf ../../${PROJECT}-${VERSION}-macos-universal.tar.gz *
 
       - name: Upload tarball
-        uses: softprops/action-gh-release@v1
+        # softprops/action-gh-release@v2.2.0
+        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
         with:
           files: "*.tar.gz"
 
@@ -243,12 +254,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
       - name: Setup Bazelisk
-        uses: bazelbuild/setup-bazelisk@v2
+        # bazelbuild/setup-bazelisk@v3.0.1
+        uses: bazelbuild/setup-bazelisk@b63ef97e907d9f0dc8c6f99a88a89f63d533addc
 
       - name: Build
         run: |
@@ -271,7 +284,8 @@ jobs:
           Compress-Archive -Path dist\windows\* -DestinationPath "${PROJECT}-${VERSION}-windows-x64.zip"
 
       - name: Upload ZIP
-        uses: softprops/action-gh-release@v1
+        # softprops/action-gh-release@v2.2.0
+        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
         with:
           files: "*.zip"
 
@@ -285,15 +299,18 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
       - name: Setup Bazelisk
-        uses: bazelbuild/setup-bazelisk@v2
+        # bazelbuild/setup-bazelisk@v3.0.1
+        uses: bazelbuild/setup-bazelisk@b63ef97e907d9f0dc8c6f99a88a89f63d533addc
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        # docker/login-action@v3.3.0
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -314,7 +331,8 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
 
@@ -327,6 +345,7 @@ jobs:
               -czf ${PROJECT}-${VERSION}-source.tar.gz .
 
       - name: Upload source archive
-        uses: softprops/action-gh-release@v1
+        # softprops/action-gh-release@v2.2.0
+        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
         with:
           files: "*-source.tar.gz"

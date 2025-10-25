@@ -1,0 +1,165 @@
+# Auto-Merge Dependabot PRs Reusable Workflow
+#
+# Automatically merges Dependabot pull requests after CI checks pass.
+# Supports version constraints and approval requirements.
+#
+# Usage:
+#   jobs:
+#     auto-merge:
+#       needs: [ci, tests]  # Wait for CI to pass
+#       uses: artagon/artagon-workflows/.github/workflows/auto_merge.yml@main
+#       secrets:
+#         token: ${{ secrets.GITHUB_TOKEN }}
+#       with:
+#         allowed-actors: 'dependabot[bot],renovate[bot]'
+
+name: Auto-Merge
+
+on:
+  workflow_call:
+    inputs:
+      allowed-actors:
+        description: 'Comma-separated list of allowed bot actors'
+        required: false
+        type: string
+        default: 'dependabot[bot]'
+      allowed-update-types:
+        description: 'Comma-separated update types: version-update:semver-patch, version-update:semver-minor, version-update:semver-major'
+        required: false
+        type: string
+        default: 'version-update:semver-patch,version-update:semver-minor'
+      merge-method:
+        description: 'Merge method: merge, squash, rebase'
+        required: false
+        type: string
+        default: 'squash'
+      require-approval:
+        description: 'Require manual approval before auto-merge'
+        required: false
+        type: boolean
+        default: false
+      delete-branch:
+        description: 'Delete branch after merge'
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      token:
+        description: 'GitHub token with write permissions'
+        required: true
+
+jobs:
+  auto-merge:
+    name: Auto-Merge Bot PRs
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]' || github.actor == 'renovate[bot]'
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Check if actor is allowed
+        id: check-actor
+        run: |
+          ACTOR="${{ github.actor }}"
+          ALLOWED="${{ inputs.allowed-actors }}"
+
+          if echo "$ALLOWED" | grep -q "$ACTOR"; then
+            echo "✓ Actor $ACTOR is allowed"
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "✗ Actor $ACTOR is not in allowed list: $ALLOWED"
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Get dependency update info
+        if: steps.check-actor.outputs.allowed == 'true'
+        id: metadata
+        # dependabot/fetch-metadata@v2.2.0
+        uses: dependabot/fetch-metadata@dbb049abf0d677abbd7f7eee0375145b417fdd34
+        with:
+          github-token: ${{ secrets.token }}
+
+      - name: Check update type
+        if: steps.check-actor.outputs.allowed == 'true'
+        id: check-update
+        env:
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          ALLOWED_TYPES: ${{ inputs.allowed-update-types }}
+        run: |
+          if echo "$ALLOWED_TYPES" | grep -q "$UPDATE_TYPE"; then
+            echo "✓ Update type $UPDATE_TYPE is allowed"
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "✗ Update type $UPDATE_TYPE not in: $ALLOWED_TYPES"
+            echo "Skipping auto-merge"
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for approval
+        if: steps.check-update.outputs.allowed == 'true' && inputs.require-approval
+        id: check-approval
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          github-token: ${{ secrets.token }}
+          script: |
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const approved = reviews.some(review => review.state === 'APPROVED');
+            core.setOutput('approved', approved);
+
+            if (approved) {
+              core.info('✓ PR has been approved');
+            } else {
+              core.info('✗ PR requires approval before auto-merge');
+            }
+
+      - name: Enable auto-merge
+        if: |
+          steps.check-actor.outputs.allowed == 'true' &&
+          steps.check-update.outputs.allowed == 'true' &&
+          (inputs.require-approval == false || steps.check-approval.outputs.approved == 'true')
+        # actions/github-script@v7.0.1
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          github-token: ${{ secrets.token }}
+          script: |
+            const mergeMethod = '${{ inputs.merge-method }}'.toUpperCase();
+
+            await github.rest.pulls.merge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              merge_method: '${{ inputs.merge-method }}',
+            });
+
+            core.info(`✓ PR auto-merged using ${mergeMethod} method`);
+
+      - name: Delete branch
+        if: |
+          steps.check-actor.outputs.allowed == 'true' &&
+          steps.check-update.outputs.allowed == 'true' &&
+          inputs.delete-branch
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          github-token: ${{ secrets.token }}
+          script: |
+            try {
+              const ref = context.payload.pull_request.head.ref;
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `heads/${ref}`,
+              });
+              core.info(`✓ Deleted branch ${ref}`);
+            } catch (error) {
+              core.warning(`Could not delete branch: ${error.message}`);
+            }

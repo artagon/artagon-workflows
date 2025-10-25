@@ -89,6 +89,9 @@ concurrency:
 jobs:
   build:
     name: Build and Test
+    permissions:
+      contents: read
+      packages: read
     uses: ./.github/workflows/maven_build.yml
     with:
       java-version: ${{ inputs.java-version }}
@@ -100,6 +103,10 @@ jobs:
   security:
     name: Security Baseline
     needs: build
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
     uses: ./.github/workflows/maven_security_scan.yml
     with:
       java-version: ${{ inputs.java-version }}
@@ -112,12 +119,17 @@ jobs:
     name: Release Readiness
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Set up Java ${{ inputs.java-version }}
-        uses: actions/setup-java@v4
+        # actions/setup-java@v4.5.0
+        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b
         with:
           java-version: ${{ inputs.java-version }}
           distribution: ${{ inputs.java-distribution }}
@@ -172,6 +184,9 @@ jobs:
       - security
       - release-readiness
     if: ${{ inputs.deploy-to-staging }}
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/maven_deploy.yml
     with:
       java-version: ${{ inputs.java-version }}

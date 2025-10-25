@@ -46,10 +46,14 @@ on:
 jobs:
   update-submodule:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: true
           token: ${{ secrets.token }}
@@ -104,7 +108,10 @@ jobs:
           # Also create a formatted version
           echo "## Changes" > /tmp/pr-body.txt
           echo "" >> /tmp/pr-body.txt
-          echo "Updated \`${{ inputs.submodule-path }}\` from \`${{ steps.update.outputs.current-commit }}\` to \`${{ steps.update.outputs.new-commit }}\`" >> /tmp/pr-body.txt
+          SUBMOD="${{ inputs.submodule-path }}"
+          OLD_COMMIT="${{ steps.update.outputs.current-commit }}"
+          NEW_COMMIT="${{ steps.update.outputs.new-commit }}"
+          echo "Updated \`$SUBMOD\` from \`$OLD_COMMIT\` to \`$NEW_COMMIT\`" >> /tmp/pr-body.txt
           echo "" >> /tmp/pr-body.txt
           echo "### Commits" >> /tmp/pr-body.txt
           echo "\`\`\`" >> /tmp/pr-body.txt
@@ -113,7 +120,8 @@ jobs:
 
       - name: Create Pull Request
         if: steps.update.outputs.has-changes == 'true' && inputs.create-pr
-        uses: peter-evans/create-pull-request@v5
+        # peter-evans/create-pull-request@v7.0.5
+        uses: peter-evans/create-pull-request@5b4a9f6a9e2af04be7c89d62e3dc3c19da083ddc
         with:
           token: ${{ secrets.token }}
           commit-message: "Update artagon-common submodule to latest ${{ inputs.branch }}"
