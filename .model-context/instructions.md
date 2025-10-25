@@ -236,7 +236,8 @@ jobs:
     env:
       SBOM_DIR: sbom
       # Pin Chainguard wolfi-base image by digest
-      WOLFI_IMAGE: cgr.dev/chainguard/wolfi-base@sha256:DIGEST_HERE
+      # Get current digest: docker inspect cgr.dev/chainguard/wolfi-base:latest --format='{{index .RepoDigests 0}}'
+      WOLFI_IMAGE: cgr.dev/chainguard/wolfi-base@sha256:914e2a46c617144692dfcf16afb3fa1865c8e2ab44c47675f5a6c7f0b8c63ba8
     steps:
       - name: Checkout repository
         # actions/checkout@v4.2.2
@@ -276,7 +277,8 @@ jobs:
               apk add --no-cache syft trivy grype osv-scanner >/dev/null
               syft dir:/workspace \
                 -o spdx-json="$SBOM_DIR/sbom.spdx.json" \
-                -o cyclonedx-json="$SBOM_DIR/sbom.cyclonedx.json"
+                -o cyclonedx-json="$SBOM_DIR/sbom.cyclonedx.json" \
+                -o cyclonedx-xml="$SBOM_DIR/sbom.cyclonedx.xml"
               trivy sbom "$SBOM_DIR/sbom.cyclonedx.json" \
                 --format sarif \
                 --severity CRITICAL,HIGH \
