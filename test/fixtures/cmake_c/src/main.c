@@ -3,6 +3,10 @@
 
 /**
  * Returns a greeting message.
+ *
+ * NOTE: This implementation uses a static buffer for simplicity as this is
+ * a minimal test fixture for workflow validation, not production code.
+ * In production, use dynamic allocation or thread-local storage for thread safety.
  */
 const char* greet(const char* name) {
     static char buffer[256];
