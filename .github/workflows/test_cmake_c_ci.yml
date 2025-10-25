@@ -1,0 +1,104 @@
+name: Test CMake C CI Workflow
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cmake_c_ci.yml'
+      - '.github/workflows/test_cmake_c_ci.yml'
+      - 'test/fixtures/cmake_c/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cmake_c_ci.yml'
+      - '.github/workflows/test_cmake_c_ci.yml'
+      - 'test/fixtures/cmake_c/**'
+  workflow_dispatch:
+
+jobs:
+  test-minimal:
+    name: Test Minimal Configuration
+    uses: ./.github/workflows/cmake_c_ci.yml
+    with:
+      c-standard: '17'
+      working-directory: test/fixtures/cmake_c
+    permissions:
+      contents: read
+
+  test-c11:
+    name: Test C11 Standard
+    uses: ./.github/workflows/cmake_c_ci.yml
+    with:
+      c-standard: '11'
+      working-directory: test/fixtures/cmake_c
+    permissions:
+      contents: read
+
+  test-c23:
+    name: Test C23 Standard
+    uses: ./.github/workflows/cmake_c_ci.yml
+    with:
+      c-standard: '23'
+      working-directory: test/fixtures/cmake_c
+    permissions:
+      contents: read
+
+  test-custom-options:
+    name: Test Custom CMake Options
+    uses: ./.github/workflows/cmake_c_ci.yml
+    with:
+      c-standard: '17'
+      cmake-options: '-DCMAKE_VERBOSE_MAKEFILE=ON'
+      working-directory: test/fixtures/cmake_c
+    permissions:
+      contents: read
+
+  verify:
+    name: Verify Test Results
+    needs: [test-minimal, test-c11, test-c23, test-custom-options]
+    runs-on: ubuntu-latest
+    if: always()
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check test results
+        run: |
+          echo "## CMake C CI Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.test-minimal.result }}" == "success" ]; then
+            echo "- ✅ Minimal configuration (C17): Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ Minimal configuration (C17): Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.test-c11.result }}" == "success" ]; then
+            echo "- ✅ C11 standard: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ C11 standard: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.test-c23.result }}" == "success" ]; then
+            echo "- ✅ C23 standard: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ C23 standard: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.test-custom-options.result }}" == "success" ]; then
+            echo "- ✅ Custom CMake options: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ Custom CMake options: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Fail if any required tests failed
+          if [ "${{ needs.test-minimal.result }}" != "success" ] || \
+             [ "${{ needs.test-c11.result }}" != "success" ] || \
+             [ "${{ needs.test-c23.result }}" != "success" ] || \
+             [ "${{ needs.test-custom-options.result }}" != "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Some CMake C CI tests failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All CMake C CI tests passed!" >> $GITHUB_STEP_SUMMARY

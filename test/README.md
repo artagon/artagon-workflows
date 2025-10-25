@@ -85,6 +85,41 @@ Three security validation jobs:
 
 Runs on: Every push to main, every PR that modifies workflows
 
+### Level 2: Unit Test Workflows
+
+**Workflows**: `.github/workflows/test_*_ci.yml`
+
+Individual workflow validation tests:
+
+1. **Maven CI Tests** (`test_maven_ci.yml`)
+   - Test with Java 17 and 21
+   - Test with/without running tests
+   - Test with custom Maven arguments
+   - Verify build artifacts
+
+2. **CMake C CI Tests** (`test_cmake_c_ci.yml`)
+   - Test with C standards: 11, 17, 23
+   - Test with custom CMake options
+   - Verify build and test execution
+
+3. **CMake C++ CI Tests** (`test_cmake_cpp_ci.yml`)
+   - Test with C++ standards: 17, 20, 23
+   - Test with custom CMake options
+   - Verify build and test execution
+
+4. **Bazel CI Tests** (`test_bazel_ci.yml`)
+   - Test minimal configuration
+   - Test with release/debug configurations
+   - Verify build and test targets
+
+Each unit test workflow:
+- Tests multiple configurations (minimal, custom, edge cases)
+- Includes verification job that validates all tests passed
+- Generates test result summary
+- Fails if any test configuration fails
+
+Runs on: Every push to main, every PR that modifies corresponding workflow or test fixtures
+
 ## Running Tests Locally
 
 ### Lint Workflows
@@ -148,10 +183,14 @@ cargo test
     - [x] Permission validation
     - [x] Action pinning validation
 
-- [ ] Phase 2: Unit Tests (Next)
-  - [ ] Unit test workflows for each reusable workflow
-  - [ ] Test verification jobs
-  - [ ] Expected behavior documentation
+- [x] Phase 2: Unit Tests
+  - [x] Unit test workflows for each reusable workflow
+    - [x] Maven CI (`test_maven_ci.yml`)
+    - [x] CMake C CI (`test_cmake_c_ci.yml`)
+    - [x] CMake C++ CI (`test_cmake_cpp_ci.yml`)
+    - [x] Bazel CI (`test_bazel_ci.yml`)
+  - [x] Test verification jobs with result summaries
+  - [x] Multiple configuration testing (minimal, custom, edge cases)
 
 - [ ] Phase 3: Integration Tests
   - [ ] Matrix test workflows

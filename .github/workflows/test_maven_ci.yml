@@ -1,0 +1,112 @@
+name: Test Maven CI Workflow
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/maven_ci.yml'
+      - '.github/workflows/test_maven_ci.yml'
+      - 'test/fixtures/maven/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/maven_ci.yml'
+      - '.github/workflows/test_maven_ci.yml'
+      - 'test/fixtures/maven/**'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: test/fixtures/maven
+
+jobs:
+  test-minimal:
+    name: Test Minimal Configuration
+    uses: ./.github/workflows/maven_ci.yml
+    with:
+      java-version: '21'
+      run-tests: true
+      working-directory: test/fixtures/maven
+    permissions:
+      contents: read
+
+  test-java-17:
+    name: Test with Java 17
+    uses: ./.github/workflows/maven_ci.yml
+    with:
+      java-version: '17'
+      run-tests: true
+      working-directory: test/fixtures/maven
+    permissions:
+      contents: read
+
+  test-skip-tests:
+    name: Test Skip Tests
+    uses: ./.github/workflows/maven_ci.yml
+    with:
+      java-version: '21'
+      run-tests: false
+      working-directory: test/fixtures/maven
+    permissions:
+      contents: read
+
+  test-custom-args:
+    name: Test Custom Maven Args
+    uses: ./.github/workflows/maven_ci.yml
+    with:
+      java-version: '21'
+      maven-args: '-DskipTests=false -V'
+      run-tests: true
+      working-directory: test/fixtures/maven
+    permissions:
+      contents: read
+
+  verify:
+    name: Verify Test Results
+    needs: [test-minimal, test-java-17, test-skip-tests, test-custom-args]
+    runs-on: ubuntu-latest
+    if: always()
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check test results
+        run: |
+          echo "## Maven CI Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.test-minimal.result }}" == "success" ]; then
+            echo "- ✅ Minimal configuration: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ Minimal configuration: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.test-java-17.result }}" == "success" ]; then
+            echo "- ✅ Java 17: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ Java 17: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.test-skip-tests.result }}" == "success" ]; then
+            echo "- ✅ Skip tests: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ Skip tests: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.test-custom-args.result }}" == "success" ]; then
+            echo "- ✅ Custom Maven args: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ Custom Maven args: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Fail if any required tests failed
+          if [ "${{ needs.test-minimal.result }}" != "success" ] || \
+             [ "${{ needs.test-java-17.result }}" != "success" ] || \
+             [ "${{ needs.test-skip-tests.result }}" != "success" ] || \
+             [ "${{ needs.test-custom-args.result }}" != "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Some Maven CI tests failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All Maven CI tests passed!" >> $GITHUB_STEP_SUMMARY
