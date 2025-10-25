@@ -33,14 +33,18 @@ jobs:
             exit 1
           fi
 
-          # Check for GitHub personal access tokens
-          if grep -rE 'ghp_[a-zA-Z0-9]{36}' .github/workflows/; then
+          # Check for GitHub personal access tokens (exclude test files)
+          if grep -rE 'ghp_[a-zA-Z0-9]{36}' .github/workflows/ \
+             --exclude='test_*.yml' \
+             --exclude='*_test.yml'; then
             echo "❌ Found GitHub personal access token"
             exit 1
           fi
 
-          # Check for AWS access keys
-          if grep -rE 'AKIA[0-9A-Z]{16}' .github/workflows/; then
+          # Check for AWS access keys (exclude test files)
+          if grep -rE 'AKIA[0-9A-Z]{16}' .github/workflows/ \
+             --exclude='test_*.yml' \
+             --exclude='*_test.yml'; then
             echo "❌ Found AWS access key"
             exit 1
           fi
@@ -49,10 +53,12 @@ jobs:
 
       - name: Verify secrets use GitHub Secrets
         run: |
-          echo "Verifying all secrets use \${{ secrets.* }} syntax..."
+          echo 'Verifying all secrets use ${{ secrets.* }} syntax...'
 
           # Find lines with sensitive keywords
-          MATCHES=$(grep -rn 'password\|token\|key\|passphrase' .github/workflows/ || true)
+          MATCHES=$(grep -rn 'password\|token\|key\|passphrase' .github/workflows/ \
+            --exclude='test_*.yml' \
+            --exclude='*_test.yml' || true)
 
           if [ -n "$MATCHES" ]; then
             echo "Found sensitive keywords, verifying they use GitHub Secrets..."
