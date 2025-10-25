@@ -282,6 +282,22 @@ jobs:
             --output linuxdeploy-x86_64.AppImage \
             "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
 
+          # Download the corresponding SHA256 checksum file
+          curl --fail-with-body \
+            --location \
+            --silent \
+            --show-error \
+            --proto '=https' \
+            --tlsv1.3 \
+            --output linuxdeploy-x86_64.AppImage.sha256 \
+            "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage.sha256"
+
+          # Verify the checksum
+          sha256sum --check --status linuxdeploy-x86_64.AppImage.sha256
+          if [ $? -ne 0 ]; then
+            echo "SHA256 checksum verification failed for linuxdeploy-x86_64.AppImage"
+            exit 1
+          fi
           chmod +x linuxdeploy-x86_64.AppImage
 
       - name: Build
