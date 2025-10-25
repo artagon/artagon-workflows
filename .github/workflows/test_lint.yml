@@ -64,11 +64,11 @@ jobs:
         run: |
           echo "Checking for unpinned GitHub Actions..."
 
-          # Check for @vX patterns (unpinned)
-          UNPINNED=$(grep -rn "uses:.*@v[0-9]$" .github/workflows/ || true)
+          # Check for @vX patterns (unpinned), excluding commented lines
+          UNPINNED=$(grep -rn "uses:.*@v[0-9]$" .github/workflows/ | grep -v "^[^:]*:[^:]*:#" || true)
 
-          # Check for @master or @main
-          UNPINNED_BRANCH=$(grep -rn "uses:.*@\(master\|main\)$" .github/workflows/ || true)
+          # Check for @master or @main, excluding commented lines
+          UNPINNED_BRANCH=$(grep -rn "uses:.*@\(master\|main\)$" .github/workflows/ | grep -v "^[^:]*:[^:]*:#" || true)
 
           if [ -n "$UNPINNED" ] || [ -n "$UNPINNED_BRANCH" ]; then
             echo "❌ Found unpinned actions:"
@@ -76,7 +76,7 @@ jobs:
             echo "$UNPINNED_BRANCH"
             echo ""
             echo "All actions must be pinned to commit SHAs."
-            echo "See ACTION_VERSIONS.md for reference."
+            echo "See .model-context/ACTION_VERSIONS.md for reference."
             exit 1
           fi
 
