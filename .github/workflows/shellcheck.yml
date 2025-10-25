@@ -1,0 +1,73 @@
+# Shellcheck Reusable Workflow
+#
+# Validates all shell scripts in the repository using shellcheck.
+# Catches shell script issues early with configurable severity levels.
+#
+# Usage:
+#   jobs:
+#     shellcheck:
+#       uses: artagon/artagon-workflows/.github/workflows/shellcheck.yml@main
+#       with:
+#         severity: warning
+#         ignore-paths: |
+#           .git
+#           node_modules
+
+name: Shellcheck
+
+on:
+  workflow_call:
+    inputs:
+      severity:
+        description: 'Minimum severity level: error, warning, info, style (default: warning)'
+        required: false
+        type: string
+        default: 'warning'
+      scan-dir:
+        description: 'Directory to scan for shell scripts (default: .)'
+        required: false
+        type: string
+        default: '.'
+      ignore-paths:
+        description: 'Paths to ignore (newline-separated)'
+        required: false
+        type: string
+        default: |
+          .git
+      upload-results:
+        description: 'Upload shellcheck results as artifact (default: true)'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  shellcheck:
+    name: Shellcheck Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          submodules: recursive
+
+      - name: Run shellcheck
+        # ludeeus/action-shellcheck@2.0.0
+        uses: ludeeus/action-shellcheck@00b27aa7cb85167568cb48a3838b75f4265f2bca
+        with:
+          severity: ${{ inputs.severity }}
+          format: gcc
+          scandir: ${{ inputs.scan-dir }}
+          ignore_paths: ${{ inputs.ignore-paths }}
+
+      - name: Upload shellcheck results
+        if: always() && inputs.upload-results
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+        with:
+          name: shellcheck-results
+          path: shellcheck.log
+          if-no-files-found: ignore
