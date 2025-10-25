@@ -100,7 +100,6 @@ jobs:
     secrets: inherit
     with:
       c-standard: '17'
-      run-tests: true
 
   test-cmake-cpp:
     name: Test CMake C++ Workflow
@@ -109,8 +108,7 @@ jobs:
     uses: ./.github/workflows/cmake_cpp_ci.yml
     secrets: inherit
     with:
-      cpp-standard: '20'
-      run-tests: true
+      cxx-standard: '20'
 
   test-bazel:
     name: Test Bazel Workflow
@@ -120,7 +118,6 @@ jobs:
     secrets: inherit
     with:
       bazel-version: 'latest'
-      run-tests: true
 
   results:
     name: CI Results
