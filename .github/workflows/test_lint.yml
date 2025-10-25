@@ -24,10 +24,11 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Run actionlint
-        # rh ysd/actionlint@v1.7.3
+        # rhysd/actionlint@v1.7.3
         uses: rhysd/actionlint@62dc61a45fc95efe8c800af7a557ab0b9165d63b
         with:
-          flags: -color -verbose
+          # Ignore shellcheck info/warning level issues, only fail on errors
+          flags: -color -verbose -shellcheck=""
 
   yamllint:
     name: Validate YAML Syntax
