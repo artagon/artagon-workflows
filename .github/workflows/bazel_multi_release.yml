@@ -309,7 +309,8 @@ jobs:
         uses: bazelbuild/setup-bazelisk@b63ef97e907d9f0dc8c6f99a88a89f63d533addc
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        # docker/login-action@v3.3.0
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

@@ -122,7 +122,8 @@ jobs:
             ${{ inputs.maven-args }}
 
       - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@v3
+        # actions/attest-build-provenance@v2.0.0
+        uses: actions/attest-build-provenance@7bcbc6a0e5c3d3d7ef75dc4cebc6c9d286ec4bb9
         with:
           subject-path: |
             **/target/*.jar
