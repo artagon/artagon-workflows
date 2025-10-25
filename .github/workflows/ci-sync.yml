@@ -1,0 +1,254 @@
+# Synchronous CI Workflow - Validate Workflow Changes with Test Results
+#
+# This workflow validates changes to reusable workflows by:
+# 1. Detecting which workflows changed
+# 2. Running the actual workflows locally with test fixtures
+# 3. Blocking PRs if workflows fail
+#
+# Unlike ci.yml which triggers external test repos asynchronously,
+# this workflow runs tests synchronously and reports pass/fail status.
+
+name: CI (Synchronous)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/*.yml'
+      - '.github/workflows/*.yaml'
+      - '!.github/workflows/ci.yml'
+      - '!.github/workflows/ci-sync.yml'
+      - '!.github/workflows/trigger_test_repos.yml'
+      - '!.github/workflows/test_*.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  detect-changes:
+    name: Detect Workflow Changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      maven: ${{ steps.filter.outputs.maven }}
+      cmake_c: ${{ steps.filter.outputs.cmake_c }}
+      cmake_cpp: ${{ steps.filter.outputs.cmake_cpp }}
+      bazel: ${{ steps.filter.outputs.bazel }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed workflows
+        id: filter
+        run: |
+          # Get changed files
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          else
+            CHANGED_FILES=$(git diff --name-only HEAD^..HEAD)
+          fi
+
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          # Check which workflows changed
+          MAVEN_CHANGED=false
+          CMAKE_C_CHANGED=false
+          CMAKE_CPP_CHANGED=false
+          BAZEL_CHANGED=false
+
+          if echo "$CHANGED_FILES" | grep -q "maven.*\.yml"; then
+            MAVEN_CHANGED=true
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q "cmake_c.*\.yml"; then
+            CMAKE_C_CHANGED=true
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q "cmake_cpp.*\.yml"; then
+            CMAKE_CPP_CHANGED=true
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q "bazel.*\.yml"; then
+            BAZEL_CHANGED=true
+          fi
+
+          echo "maven=$MAVEN_CHANGED" >> $GITHUB_OUTPUT
+          echo "cmake_c=$CMAKE_C_CHANGED" >> $GITHUB_OUTPUT
+          echo "cmake_cpp=$CMAKE_CPP_CHANGED" >> $GITHUB_OUTPUT
+          echo "bazel=$BAZEL_CHANGED" >> $GITHUB_OUTPUT
+
+  test-maven:
+    name: Test Maven Workflow
+    needs: detect-changes
+    if: needs.detect-changes.outputs.maven == 'true'
+    uses: ./.github/workflows/maven_ci.yml
+    secrets: inherit
+    with:
+      java-version: '21'
+      run-tests: true
+
+  test-cmake-c:
+    name: Test CMake C Workflow
+    needs: detect-changes
+    if: needs.detect-changes.outputs.cmake_c == 'true'
+    uses: ./.github/workflows/cmake_c_ci.yml
+    secrets: inherit
+    with:
+      c-standard: '17'
+      run-tests: true
+
+  test-cmake-cpp:
+    name: Test CMake C++ Workflow
+    needs: detect-changes
+    if: needs.detect-changes.outputs.cmake_cpp == 'true'
+    uses: ./.github/workflows/cmake_cpp_ci.yml
+    secrets: inherit
+    with:
+      cpp-standard: '20'
+      run-tests: true
+
+  test-bazel:
+    name: Test Bazel Workflow
+    needs: detect-changes
+    if: needs.detect-changes.outputs.bazel == 'true'
+    uses: ./.github/workflows/bazel_multi_ci.yml
+    secrets: inherit
+    with:
+      bazel-version: 'latest'
+      run-tests: true
+
+  results:
+    name: CI Results
+    runs-on: ubuntu-latest
+    needs: [detect-changes, test-maven, test-cmake-c, test-cmake-cpp, test-bazel]
+    if: always()
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Check test results
+        id: check
+        run: |
+          FAILED=false
+          RESULTS=""
+
+          if [ "${{ needs.detect-changes.outputs.maven }}" = "true" ]; then
+            if [ "${{ needs.test-maven.result }}" != "success" ]; then
+              echo "❌ Maven workflow test failed"
+              RESULTS="${RESULTS}\n- ❌ Maven: ${{ needs.test-maven.result }}"
+              FAILED=true
+            else
+              echo "✅ Maven workflow test passed"
+              RESULTS="${RESULTS}\n- ✅ Maven: passed"
+            fi
+          fi
+
+          if [ "${{ needs.detect-changes.outputs.cmake_c }}" = "true" ]; then
+            if [ "${{ needs.test-cmake-c.result }}" != "success" ]; then
+              echo "❌ CMake C workflow test failed"
+              RESULTS="${RESULTS}\n- ❌ CMake C: ${{ needs.test-cmake-c.result }}"
+              FAILED=true
+            else
+              echo "✅ CMake C workflow test passed"
+              RESULTS="${RESULTS}\n- ✅ CMake C: passed"
+            fi
+          fi
+
+          if [ "${{ needs.detect-changes.outputs.cmake_cpp }}" = "true" ]; then
+            if [ "${{ needs.test-cmake-cpp.result }}" != "success" ]; then
+              echo "❌ CMake C++ workflow test failed"
+              RESULTS="${RESULTS}\n- ❌ CMake C++: ${{ needs.test-cmake-cpp.result }}"
+              FAILED=true
+            else
+              echo "✅ CMake C++ workflow test passed"
+              RESULTS="${RESULTS}\n- ✅ CMake C++: passed"
+            fi
+          fi
+
+          if [ "${{ needs.detect-changes.outputs.bazel }}" = "true" ]; then
+            if [ "${{ needs.test-bazel.result }}" != "success" ]; then
+              echo "❌ Bazel workflow test failed"
+              RESULTS="${RESULTS}\n- ❌ Bazel: ${{ needs.test-bazel.result }}"
+              FAILED=true
+            else
+              echo "✅ Bazel workflow test passed"
+              RESULTS="${RESULTS}\n- ✅ Bazel: passed"
+            fi
+          fi
+
+          echo "results<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$RESULTS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          if [ "$FAILED" = "true" ]; then
+            echo "failed=true" >> $GITHUB_OUTPUT
+            exit 1
+          else
+            echo "failed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate Summary
+        if: always()
+        run: |
+          echo "## 🔍 Workflow Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.check.outputs.results }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.check.outputs.failed }}" = "true" ]; then
+            echo "**Status:** ❌ One or more workflow tests failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Status:** ✅ All workflow tests passed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            const failed = '${{ steps.check.outputs.failed }}' === 'true';
+            const results = `${{ steps.check.outputs.results }}`;
+
+            const body = `## 🔍 Workflow Validation Results
+
+            ${results}
+
+            ${failed ? '**Status:** ❌ Workflow tests failed - please fix before merging' : '**Status:** ✅ All workflow tests passed'}
+
+            ---
+            _These tests run the modified workflows with test fixtures to validate functionality._`;
+
+            // Check if we already commented
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('Workflow Validation Results')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
