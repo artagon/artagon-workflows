@@ -21,12 +21,13 @@ Centralized repository of production-ready, reusable GitHub Actions workflows fo
 ### Repository Structure
 ```
 artagon-workflows/
-├── .github/workflows/        # 17 reusable workflow files (3,711 LOC)
+├── .github/
+│   └── workflows/            # 24 reusable workflow files
 ├── .model-context/           # AI model instructions (THIS FOLDER)
-├── docs/                     # User-facing documentation
+├── docs/                     # Build & release documentation
 ├── examples/                 # Usage examples for each build system
-├── test/fixtures/            # Test fixtures (planned)
-└── .github/dependabot.yml    # Automated dependency updates
+├── WORKFLOWS_USAGE.md        # Consumer guide for reusable workflows
+└── MIGRATION_v2.md           # Migration guidance for v2 workflow naming
 ```
 
 ---
@@ -35,26 +36,25 @@ artagon-workflows/
 
 This folder contains comprehensive AI model instructions:
 
-### 🔒 Security & Implementation (READ FIRST)
-1. **IMPLEMENTATION_COMPLETE.md** ⭐ **START HERE**
-   - Current status: 75% complete
-   - What's been done, what remains
-   - Quick reference for all tasks
+### 🔒 Security & Roadmap (READ FIRST)
+1. **instructions.md** ⭐ **START HERE**
+   - Quick-start rules for AI assistants
+   - Escalation paths and security requirements
 
-2. **SECURITY_AUDIT.md**
-   - 10 vulnerabilities identified (2 CRITICAL, 5 HIGH, 3 MEDIUM)
-   - All CRITICAL and HIGH issues resolved
-   - Detailed remediation steps
+2. **context.md**
+   - Current repository status
+   - Key decisions and remaining work
+   - Quick links to supporting docs
 
 3. **SECURITY_IMPLEMENTATION_PLAN.md**
    - 10-week prioritized roadmap
    - Task breakdown with time estimates
    - Validation checklists
 
-4. **IMPLEMENTATION_STATUS.md**
-   - Live progress tracker
-   - Detailed task status
-   - Quick action scripts
+4. **SECURITY_AUDIT.md**
+   - 10 vulnerabilities identified (2 CRITICAL, 5 HIGH, 3 MEDIUM)
+   - All CRITICAL and HIGH issues resolved
+   - Detailed remediation steps
 
 ### 📖 Reference Documentation
 5. **ACTION_VERSIONS.md**
@@ -73,11 +73,14 @@ This folder contains comprehensive AI model instructions:
    - Detailed analysis (mono-repo vs multi-repo)
    - Saves ~230 hours/year
 
-### 📊 Status & Summary
-8. **README_SECURITY_REVIEW.md**
-   - Executive summary
-   - Quick reference guide
-   - Next steps
+8. **skills/github-workflows.md**
+   - Security templates for permissions and input validation
+   - Action pinning and checksum patterns
+   - Review checklists for workflow changes
+
+9. **skills/development-workflow.md**
+   - Day-to-day development workflow guidance
+   - Commit hygiene and review expectations
 
 ---
 
@@ -86,8 +89,8 @@ This folder contains comprehensive AI model instructions:
 ### ✅ COMPLETED TASKS (Do NOT redo these)
 
 1. **All GitHub Actions Pinned** ✅
-   - ALL 17 workflows updated
-   - ALL 400+ action references pinned to commit SHAs
+   - ALL 24 workflows updated
+   - All action references pinned to immutable commit SHAs
    - Trivy @master vulnerability FIXED
 
 2. **Critical Security Fixes** ✅
@@ -105,15 +108,21 @@ This folder contains comprehensive AI model instructions:
 
 ### ⏳ REMAINING TASKS (25% - 4 hours)
 
-1. **Permissions Blocks** (8 workflows)
-   - CI workflows need: `contents: read, packages: read`
-   - Release workflows need: `contents: write, packages: write`
-   - **Template available in IMPLEMENTATION_COMPLETE.md**
+1. **Permissions Blocks** (7 workflows outstanding)
+   - Add least-privilege `permissions` to:
+     - `.github/workflows/cmake_c_release.yml`
+     - `.github/workflows/cmake_cpp_ci.yml`
+     - `.github/workflows/cmake_cpp_release.yml`
+     - `.github/workflows/maven_bump_version.yml`
+     - `.github/workflows/maven_release_branch.yml`
+     - `.github/workflows/maven_release_tag.yml`
+     - `.github/workflows/update_submodule.yml`
+   - Reference permission patterns in `.model-context/skills/github-workflows.md` (Explicit Permissions section).
 
-2. **Input Validation** (5 workflows)
-   - Validate user inputs against regex patterns
-   - Prevent command injection
-   - **Template in maven_ci.yml:88-100**
+2. **Input Validation** (targeted audit)
+   - Validate all user-controlled inputs before passing them to shell commands.
+   - Reuse the validation approach from `maven_ci.yml:88-100`.
+   - Document findings and updates in `SECURITY_IMPLEMENTATION_PLAN.md`.
 
 3. **Test Fixtures** (planned)
    - Create minimal test projects
@@ -128,8 +137,8 @@ This folder contains comprehensive AI model instructions:
 #### 1. **ALWAYS Read Context First**
 ```
 1. Read this context.md file
-2. Check IMPLEMENTATION_COMPLETE.md for current status
-3. Review relevant detailed docs as needed
+2. Review instructions.md for the quick-start checklist
+3. Check SECURITY_IMPLEMENTATION_PLAN.md for roadmap details
 ```
 
 #### 2. **Repository Strategy: MONO-REPO**
@@ -508,30 +517,31 @@ uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 - ✅ Progress tracking active
 
 ### Workflow Status
-**Fully Secured** (CRITICAL + HIGH fixes done):
-- ✅ maven_ci.yml
-- ✅ maven_security_scan.yml
-- ✅ maven_release.yml
-- ✅ maven_deploy.yml
-- ✅ bazel_multi_ci.yml (+ buildifier checksum)
-- ✅ All 17 workflows (action pinning)
+## 🔐 Security Snapshot
 
-**Needs Permissions** (8 workflows):
-- cmake_c_ci.yml (partial - 6 more jobs)
-- cmake_cpp_ci.yml
-- cmake_c_release.yml
-- cmake_cpp_release.yml
-- maven_bump_version.yml
-- maven_release_branch.yml
-- maven_release_tag.yml
-- update_submodule.yml
+- ✅ Critical fixes completed (GPG passphrase handling, Buildifier checksum verification, SARIF permissions).
+- ✅ Action pinning enforced across all 24 workflows.
+- ✅ Dedicated security workflows available (`maven_security_scan.yml`, `codeql.yml`, `dependency_review.yml`).
 
-**Needs Input Validation** (5 workflows):
-- maven_build.yml
-- maven_release.yml
-- cmake_c_ci.yml
-- cmake_cpp_ci.yml
-- bazel_multi_ci.yml
+**Pending Hardening**
+
+- **Permissions** – add least-privilege `permissions` blocks to:
+  - `.github/workflows/cmake_c_release.yml`
+  - `.github/workflows/cmake_cpp_ci.yml`
+  - `.github/workflows/cmake_cpp_release.yml`
+  - `.github/workflows/maven_bump_version.yml`
+  - `.github/workflows/maven_release_branch.yml`
+  - `.github/workflows/maven_release_tag.yml`
+  - `.github/workflows/update_submodule.yml`
+  Use examples from `.model-context/skills/github-workflows.md`.
+
+- **Input validation** – implement sanitization for user-controlled inputs in:
+  - `.github/workflows/maven_build.yml`
+  - `.github/workflows/maven_release.yml`
+  - `.github/workflows/cmake_c_ci.yml`
+  - `.github/workflows/cmake_cpp_ci.yml`
+  - `.github/workflows/bazel_multi_ci.yml`
+  Track changes in `SECURITY_IMPLEMENTATION_PLAN.md`.
 
 ---
 
@@ -551,7 +561,7 @@ When asked to work on this project:
 - For security tasks → SECURITY_AUDIT.md, SECURITY_IMPLEMENTATION_PLAN.md
 - For testing → TESTING_STRATEGY.md
 - For action versions → ACTION_VERSIONS.md
-- For current status → IMPLEMENTATION_COMPLETE.md
+- For current status → context.md (this file) and instructions.md
 ```
 
 ### Step 3: Apply Guidelines
@@ -566,9 +576,9 @@ When asked to work on this project:
 
 ### Step 4: Update Documentation
 ```
-- Update IMPLEMENTATION_STATUS.md with progress
+- Update SECURITY_IMPLEMENTATION_PLAN.md or this context.md with progress
 - Note any new decisions in context.md
-- Update relevant detailed docs
+- Update supporting documentation as needed
 ```
 
 ### Step 5: Commit Properly
@@ -584,11 +594,15 @@ When asked to work on this project:
 ## 🔗 Quick Reference Links
 
 ### Within This Folder (.model-context/)
-- **IMPLEMENTATION_COMPLETE.md** - Current status, what's done, what remains
+- **instructions.md** - Quick-start rules and escalation guidance
+- **context.md** - Current status, key decisions, outstanding work
+- **SECURITY_IMPLEMENTATION_PLAN.md** - Roadmap and remaining work
 - **SECURITY_AUDIT.md** - All vulnerabilities and fixes
 - **ACTION_VERSIONS.md** - Action version reference
 - **TESTING_STRATEGY.md** - Testing framework
 - **REPOSITORY_STRATEGY.md** - Mono-repo decision
+- **skills/github-workflows.md** - Security templates for permissions, validation, pinning
+- **skills/development-workflow.md** - Day-to-day engineering workflow
 
 ### Repository Root
 - **README.md** - User-facing documentation
@@ -596,6 +610,8 @@ When asked to work on this project:
 - **CONTRIBUTING.md** - Contribution guidelines
 - **.github/dependabot.yml** - Dependency automation
 - **.github/workflows/test_lint.yml** - Automated testing
+- **WORKFLOWS_USAGE.md** - Reusable workflow usage guide
+- **MIGRATION_v2.md** - Workflow naming migration notes
 
 ### Documentation Folders
 - **docs/** - Language-specific guides (RELEASE_JAVA.md, RELEASE_C.md, etc.)
@@ -606,7 +622,7 @@ When asked to work on this project:
 ## 💡 Tips for AI Models
 
 ### When in Doubt
-1. **Read IMPLEMENTATION_COMPLETE.md first** - It's the single source of truth
+1. **Review instructions.md and this context first** - They are the sources of truth
 2. **Check security templates** - Use the templates in this file
 3. **Verify against checklists** - Use validation checklists before committing
 4. **Ask before major changes** - Repository structure, breaking changes, etc.
@@ -619,7 +635,7 @@ When asked to work on this project:
 ### Quality Tips
 1. **Test locally** - Use actionlint, yamllint before committing
 2. **Follow conventions** - Naming, commit messages, documentation
-3. **Update status** - Keep IMPLEMENTATION_STATUS.md current
+3. **Update status** - Keep this context.md and SECURITY_IMPLEMENTATION_PLAN.md current
 4. **Be consistent** - Match existing patterns in the codebase
 
 ---
@@ -691,7 +707,7 @@ Before committing workflow changes:
 - [ ] Binary downloads have checksum verification
 - [ ] Workflow tested (at minimum: linting)
 - [ ] Documentation updated
-- [ ] IMPLEMENTATION_STATUS.md updated
+- [ ] context.md and/or SECURITY_IMPLEMENTATION_PLAN.md updated
 - [ ] Semantic commit message
 - [ ] NO Claude attribution
 
@@ -706,4 +722,4 @@ Before committing workflow changes:
 
 **🎯 Remember**: This project is production-ready. All critical security vulnerabilities have been eliminated. The remaining 25% is enhancement work for complete coverage.
 
-**For AI Models**: Always start with IMPLEMENTATION_COMPLETE.md, apply the security templates from this file, and update status as you work. Happy coding! 🚀
+**For AI Models**: Always start with instructions.md and this context.md, apply the security templates from this folder, and update status as you work. Happy coding! 🚀

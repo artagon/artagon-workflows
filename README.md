@@ -221,13 +221,13 @@ tag v1.0.8:    created
 - ✅ Release branches are **kept** for hotfixes (not deleted)
 - ✅ Tags are created on release branches
 
-For detailed instructions, see **[RELEASE.md](RELEASE.md)**.
+For detailed instructions, see **[RELEASE.md](docs/RELEASE.md)**.
 
 ## Documentation
 
 ### Release Process
 
-- **[RELEASE.md](RELEASE.md)** - Complete release process guide
+- **[RELEASE.md](docs/RELEASE.md)** - Maven release process and language-specific guide index
 - **[Java Release Strategy](docs/RELEASE_JAVA.md)** - Maven, Gradle, SNAPSHOT versions, Maven Central
 - **[C Release Strategy](docs/RELEASE_C.md)** - CMake, Autotools, tag-based releases, ABI stability
 - **[C++ Release Strategy](docs/RELEASE_CPP.md)** - CMake, Bazel, LTS support, ABI/API management

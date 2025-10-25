@@ -1,23 +1,67 @@
 # Release Process
 
-This document describes the release process for Artagon projects using the Artagon workflows.
+This document describes the Maven-specific release process for Artagon projects. For other languages, see the language-specific guides below.
 
 ## Language-Specific Release Guides
 
-For detailed, language-specific release strategies and best practices, see:
+Choose the appropriate guide for your project:
 
-- **[Java Release Strategy](docs/RELEASE_JAVA.md)** - Maven, Gradle, SNAPSHOT versions, Maven Central
-- **[C Release Strategy](docs/RELEASE_C.md)** - CMake, Autotools, tag-based releases, ABI stability
-- **[C++ Release Strategy](docs/RELEASE_CPP.md)** - CMake, Bazel, LTS support, ABI/API management
-- **[Rust Release Strategy](docs/RELEASE_RUST.md)** - Cargo, crates.io, MSRV policy, SemVer
+### Java / Maven Projects
+**[Java Release Strategy](RELEASE_JAVA.md)**
 
-Each guide includes:
-- Branching models tailored to the language ecosystem
-- Version management conventions
-- Build system integration
-- Release automation
-- Best practices from industry leaders
-- Troubleshooting
+Comprehensive guide for Java projects covering:
+- Maven Central publishing with GPG signing
+- SNAPSHOT version management
+- Release branch strategy
+- OSSRH deployment and Nexus staging
+- Multi-module projects
+- Gradle integration
+
+### C Projects
+**[C Release Strategy](RELEASE_C.md)**
+
+Complete guide for C projects covering:
+- CMake and Autotools builds
+- Tag-based releases
+- ABI stability guidelines
+- Source tarball creation
+- **Linux package distribution** (DEB, RPM, Alpine APK, Arch PKGBUILD)
+- Homebrew formulas for macOS
+- Long-term maintenance branches
+
+### C++ Projects
+**[C++ Release Strategy](RELEASE_CPP.md)**
+
+Comprehensive guide for C++ projects covering:
+- CMake and Bazel builds
+- ABI/API compatibility management
+- PIMPL pattern for stability
+- LTS (Long-Term Support) strategy
+- **Package distribution** (Debian, Fedora, Arch, Alpine, Conan)
+- vcpkg integration
+- Multi-platform releases
+
+### Rust Projects
+**[Rust Release Strategy](RELEASE_RUST.md)**
+
+Complete guide for Rust projects covering:
+- Cargo workspace management
+- crates.io publishing
+- MSRV (Minimum Supported Rust Version) policy
+- Semantic versioning for Rust
+- Binary distribution
+- Cross-compilation
+
+---
+
+## Quick Reference
+
+| Language | Build System | Registry | Key Workflows |
+|----------|-------------|----------|---------------|
+| **Java** | Maven, Gradle | Maven Central | `maven_ci.yml`, `maven-central-release.yml` |
+| **C** | CMake, Autotools | Source tarballs, system packages | `cmake_c_ci.yml`, `cmake_c_release.yml` |
+| **C++** | CMake, Bazel | Source tarballs, system packages, Conan | `cmake_cpp_ci.yml`, `cmake_cpp_release.yml`, `bazel_multi_release.yml` |
+| **Rust** | Cargo | crates.io | Custom workflows (TBD) |
 
 ---
 
