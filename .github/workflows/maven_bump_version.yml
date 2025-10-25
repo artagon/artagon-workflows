@@ -110,13 +110,9 @@ jobs:
           fi
 
           git add .
-          git commit -m "$(cat <<EOF
-chore: bump version to $NEW_VERSION
-
-Previous version: $CURRENT_VERSION
-Updated by: GitHub Actions workflow
-EOF
-)"
+          git commit -m "chore: bump version to $NEW_VERSION" \
+            -m "Previous version: $CURRENT_VERSION" \
+            -m "Updated by: GitHub Actions workflow"
 
           echo "✅ Version updated successfully"
 
