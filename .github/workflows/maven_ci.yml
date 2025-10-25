@@ -48,7 +48,7 @@ on:
         description: 'Upload build and test artifacts'
         required: false
         type: boolean
-        default: true
+        default: false
 
 jobs:
   build:
