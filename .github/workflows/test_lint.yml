@@ -23,12 +23,28 @@ jobs:
         # actions/checkout@v4.2.2
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
+      - name: Install actionlint
+        run: |
+          # Download actionlint v1.7.3
+          VERSION="1.7.3"
+          curl --fail-with-body \
+            --location \
+            --silent \
+            --show-error \
+            --proto '=https' \
+            --tlsv1.3 \
+            --output /tmp/actionlint.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${VERSION}/actionlint_${VERSION}_linux_amd64.tar.gz"
+
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp
+          sudo mv /tmp/actionlint /usr/local/bin/
+          actionlint --version
+
       - name: Run actionlint
-        # rhysd/actionlint@v1.7.3
-        uses: rhysd/actionlint@62dc61a45fc95efe8c800af7a557ab0b9165d63b
-        with:
-          # Ignore shellcheck info/warning level issues, only fail on errors
-          flags: -color -verbose -shellcheck=""
+        run: |
+          # Run actionlint without shellcheck to avoid info/warning noise
+          # Only fail on actual actionlint errors
+          actionlint -color -verbose -shellcheck="" .github/workflows/*.yml
 
   yamllint:
     name: Validate YAML Syntax
