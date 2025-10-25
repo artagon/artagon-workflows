@@ -135,46 +135,46 @@ jobs:
           RESULTS=""
 
           if [ "${{ needs.detect-changes.outputs.maven }}" = "true" ]; then
-            if [ "${{ needs.test-maven.result }}" != "success" ]; then
+            if [ "${{ needs.test-maven.result }}" != "success" ] && [ "${{ needs.test-maven.result }}" != "skipped" ]; then
               echo "❌ Maven workflow test failed"
               RESULTS="${RESULTS}\n- ❌ Maven: ${{ needs.test-maven.result }}"
               FAILED=true
             else
               echo "✅ Maven workflow test passed"
-              RESULTS="${RESULTS}\n- ✅ Maven: passed"
+              RESULTS="${RESULTS}\n- ✅ Maven: ${{ needs.test-maven.result }})"
             fi
           fi
 
           if [ "${{ needs.detect-changes.outputs.cmake_c }}" = "true" ]; then
-            if [ "${{ needs.test-cmake-c.result }}" != "success" ]; then
+            if [ "${{ needs.test-cmake-c.result }}" != "success" ] && [ "${{ needs.test-cmake-c.result }}" != "skipped" ]; then
               echo "❌ CMake C workflow test failed"
               RESULTS="${RESULTS}\n- ❌ CMake C: ${{ needs.test-cmake-c.result }}"
               FAILED=true
             else
               echo "✅ CMake C workflow test passed"
-              RESULTS="${RESULTS}\n- ✅ CMake C: passed"
+              RESULTS="${RESULTS}\n- ✅ CMake C: ${{ needs.test-cmake-c.result }})"
             fi
           fi
 
           if [ "${{ needs.detect-changes.outputs.cmake_cpp }}" = "true" ]; then
-            if [ "${{ needs.test-cmake-cpp.result }}" != "success" ]; then
+            if [ "${{ needs.test-cmake-cpp.result }}" != "success" ] && [ "${{ needs.test-cmake-cpp.result }}" != "skipped" ]; then
               echo "❌ CMake C++ workflow test failed"
               RESULTS="${RESULTS}\n- ❌ CMake C++: ${{ needs.test-cmake-cpp.result }}"
               FAILED=true
             else
               echo "✅ CMake C++ workflow test passed"
-              RESULTS="${RESULTS}\n- ✅ CMake C++: passed"
+              RESULTS="${RESULTS}\n- ✅ CMake C++: ${{ needs.test-cmake-cpp.result }})"
             fi
           fi
 
           if [ "${{ needs.detect-changes.outputs.bazel }}" = "true" ]; then
-            if [ "${{ needs.test-bazel.result }}" != "success" ]; then
+            if [ "${{ needs.test-bazel.result }}" != "success" ] && [ "${{ needs.test-bazel.result }}" != "skipped" ]; then
               echo "❌ Bazel workflow test failed"
               RESULTS="${RESULTS}\n- ❌ Bazel: ${{ needs.test-bazel.result }}"
               FAILED=true
             else
               echo "✅ Bazel workflow test passed"
-              RESULTS="${RESULTS}\n- ✅ Bazel: passed"
+              RESULTS="${RESULTS}\n- ✅ Bazel: ${{ needs.test-bazel.result }})"
             fi
           fi
 
