@@ -199,9 +199,9 @@ jobs:
       - name: Configure CMake (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          cmake -B build `
-            -G "Visual Studio 17 2022" `
-            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} `
+          cmake -B build \
+            -G "Visual Studio 17 2022" \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             ${{ inputs.cmake-options }}
 
       - name: Build (Unix)
