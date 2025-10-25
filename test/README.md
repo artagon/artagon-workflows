@@ -85,28 +85,6 @@ Three security validation jobs:
 
 Runs on: Every push to main, every PR that modifies workflows
 
-### Functional Testing (Phase 2)
-
-**Workflow**: `.github/workflows/ci.yml`
-
-Validates workflow changes by triggering separate test repositories:
-
-**Features**:
-- Detects which workflows changed (Maven, CMake, Bazel)
-- Triggers relevant test repositories via `repository_dispatch`
-- Posts PR comments with links to test results
-- Runs asynchronously - doesn't block PR checks
-
-**Test Repositories**:
-1. [artagon-workflow-test-maven](https://github.com/artagon/artagon-workflow-test-maven) - Tests Maven workflows
-2. [artagon-workflow-test-cmake](https://github.com/artagon/artagon-workflow-test-cmake) - Tests CMake C/C++ workflows
-3. [artagon-workflow-test-bazel](https://github.com/artagon/artagon-workflow-test-bazel) - Tests Bazel workflows
-4. [artagon-workflow-test-rust](https://github.com/artagon/artagon-workflow-test-rust) - Placeholder for Rust workflows
-
-Runs on: Every PR and push to main that modifies workflow files
-
-See [TEST_REPOSITORIES.md](../.model-context/TEST_REPOSITORIES.md) for detailed documentation.
-
 ## Running Tests Locally
 
 ### Lint Workflows
