@@ -24,7 +24,6 @@ jobs:
       java-distribution: 'temurin'
 
       # Wrapper verification
-      verify-wrapper: true
       # Optional: Provide wrapper SHA-256 for extra security
       # wrapper-sha256: '5313c32c68e98e6bd396d7c43a60ba729d47f8e8e10315eddb2be912aafde67e'
 
