@@ -6,7 +6,7 @@
 # on: [push, pull_request]
 # jobs:
 #   ci:
-#     uses: artagon/artagon-common/.github/workflows/c-ci.yml@main
+#     uses: artagon/artagon-workflows/.github/workflows/cmake_c_ci.yml@main
 #     secrets: inherit
 
 name: C Project CI

@@ -6,7 +6,7 @@
 # on: [push, pull_request]
 # jobs:
 #   ci:
-#     uses: artagon/artagon-common/.github/workflows/bazel-ci.yml@main
+#     uses: artagon/artagon-workflows/.github/workflows/bazel_multi_ci.yml@main
 #     with:
 #       bazel-configs: 'release,asan,ubsan'
 #     secrets: inherit
