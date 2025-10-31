@@ -1,0 +1,443 @@
+name: Gradle Release with SBOM (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        description: 'Java version to use'
+        required: false
+        type: string
+        default: '25'
+      java-distribution:
+        description: 'Java distribution'
+        required: false
+        type: string
+        default: 'temurin'
+      gradle-args:
+        description: 'Additional Gradle arguments'
+        required: false
+        type: string
+        default: ''
+      wrapper-sha256:
+        description: 'Expected SHA-256 of gradle-wrapper.jar'
+        required: false
+        type: string
+        default: ''
+      generate-sbom:
+        description: 'Generate SBOM (CycloneDX v1.6)'
+        required: false
+        type: boolean
+        default: true
+      validate-sbom:
+        description: 'Validate SBOM against schema'
+        required: false
+        type: boolean
+        default: true
+      convert-to-spdx:
+        description: 'Convert SBOM to SPDX format'
+        required: false
+        type: boolean
+        default: true
+      sign-sbom:
+        description: 'Sign SBOM with Cosign (keyless)'
+        required: false
+        type: boolean
+        default: true
+      create-github-release:
+        description: 'Create GitHub release'
+        required: false
+        type: boolean
+        default: true
+      publish-artifacts:
+        description: 'Publish artifacts (requires publish task)'
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      release-version:
+        description: 'The version that was released'
+        value: ${{ jobs.release.outputs.version }}
+      sbom-path:
+        description: 'Path to generated SBOM'
+        value: ${{ jobs.release.outputs.sbom-path }}
+
+jobs:
+  release:
+    name: Gradle Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # Create releases
+      packages: write       # Publish artifacts
+      id-token: write       # OIDC for Cosign
+      attestations: write   # Attest artifacts
+
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      sbom-path: ${{ steps.sbom-paths.outputs.json }}
+
+    steps:
+      - name: Checkout code
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ inputs.java-version }}
+        # actions/setup-java@v4.5.0
+        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: ${{ inputs.java-distribution }}
+
+      - name: Verify Gradle wrapper integrity
+        run: |
+          set -euo pipefail
+
+          echo "🔍 Verifying Gradle wrapper integrity..."
+
+          # Check wrapper exists
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "❌ Gradle wrapper not found"
+            exit 1
+          fi
+
+          # Verify distributionSha256Sum is configured
+          if ! grep -q "distributionSha256Sum" gradle/wrapper/gradle-wrapper.properties; then
+            echo "❌ distributionSha256Sum not configured in gradle-wrapper.properties"
+            echo "Add: distributionSha256Sum=<sha256-hash>"
+            exit 1
+          fi
+
+          CONFIGURED_SHA=$(grep "distributionSha256Sum" gradle/wrapper/gradle-wrapper.properties | cut -d= -f2)
+          echo "✅ Wrapper distribution SHA-256: ${CONFIGURED_SHA:0:16}..."
+
+          # Verify wrapper JAR if SHA provided
+          if [ -n "${{ inputs.wrapper-sha256 }}" ]; then
+            ACTUAL_SHA=$(sha256sum gradle/wrapper/gradle-wrapper.jar | awk '{print $1}')
+            EXPECTED_SHA="${{ inputs.wrapper-sha256 }}"
+
+            if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+              echo "❌ Wrapper JAR hash mismatch!"
+              echo "Expected: $EXPECTED_SHA"
+              echo "Actual:   $ACTUAL_SHA"
+              exit 1
+            fi
+            echo "✅ Wrapper JAR verified: ${ACTUAL_SHA:0:16}..."
+          fi
+
+      - name: Setup Gradle
+        # gradle/actions/setup-gradle@v4.2.0
+        uses: gradle/actions/setup-gradle@d156388eb19639ec20ade50009f3d199ce1e2808
+        with:
+          cache-read-only: false
+          gradle-home-cache-cleanup: true
+
+      - name: Verify dependency lockfiles exist
+        run: |
+          set -euo pipefail
+
+          echo "🔍 Checking for dependency lockfiles..."
+
+          LOCKFILES=$(find . -name "*.lockfile" -o -name "gradle.lockfile" | wc -l)
+
+          if [ "$LOCKFILES" -eq 0 ]; then
+            echo "❌ No lockfiles found!"
+            echo "Generate with: ./gradlew dependencies --write-locks"
+            exit 1
+          fi
+
+          echo "✅ Found $LOCKFILES lockfile(s)"
+
+      - name: Verify dependency verification metadata exists
+        run: |
+          set -euo pipefail
+
+          echo "🔍 Checking for dependency verification metadata..."
+
+          if [ ! -f gradle/verification-metadata.xml ]; then
+            echo "❌ verification-metadata.xml not found!"
+            echo "Generate with: ./gradlew --write-verification-metadata sha256 help"
+            exit 1
+          fi
+
+          echo "✅ verification-metadata.xml found"
+
+      - name: Get version from tag
+        id: get-version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          VERSION=${VERSION#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Release version: $VERSION"
+
+      - name: Build with strict verification
+        run: |
+          set -euo pipefail
+
+          echo "🔒 Building with strict dependency verification..."
+
+          ./gradlew clean build \
+            --verification-mode strict \
+            -x test \
+            ${{ inputs.gradle-args }}
+
+      - name: Verify no lockfile drift
+        run: |
+          set -euo pipefail
+
+          echo "🔍 Verifying no lockfile drift..."
+
+          if git diff --exit-code '*.lockfile' 'gradle.lockfile' 2>/dev/null; then
+            echo "✅ No lockfile drift"
+          else
+            echo "❌ Lockfile drift detected!"
+            git diff '*.lockfile' 'gradle.lockfile'
+            exit 1
+          fi
+
+      - name: Generate SBOM
+        if: inputs.generate-sbom
+        run: |
+          set -euo pipefail
+
+          echo "📦 Generating CycloneDX SBOM..."
+
+          ./gradlew cyclonedxBom ${{ inputs.gradle-args }}
+
+          # Find generated SBOMs
+          SBOM_JSON=$(find . -path "*/build/reports/bom.json" | head -1)
+          SBOM_XML=$(find . -path "*/build/reports/bom.xml" | head -1)
+
+          if [ -z "$SBOM_JSON" ]; then
+            echo "❌ SBOM not generated!"
+            echo "Ensure CycloneDX Gradle plugin is configured"
+            exit 1
+          fi
+
+          echo "✅ SBOM generated: $SBOM_JSON"
+
+          # Create SBOM directory
+          mkdir -p build/sbom
+
+          # Copy and rename with version
+          cp "$SBOM_JSON" "build/sbom/bom-release-${{ steps.get-version.outputs.version }}.cdx.json"
+          if [ -n "$SBOM_XML" ]; then
+            cp "$SBOM_XML" "build/sbom/bom-release-${{ steps.get-version.outputs.version }}.cdx.xml"
+          fi
+
+      - name: Install CycloneDX CLI
+        if: inputs.generate-sbom && (inputs.validate-sbom || inputs.convert-to-spdx)
+        run: |
+          set -euo pipefail
+
+          echo "📥 Installing CycloneDX CLI..."
+
+          CYCLONEDX_VERSION="0.27.1"
+          CYCLONEDX_SHA256="8eafc7c0666b1c673275fb91b233b3a2e62c1b5c7c0f0cf3e0bfe179e2e5f5ea"
+
+          # Hardened curl download
+          curl --proto '=https' \
+               --tlsv1.2 \
+               --ssl-reqd \
+               --retry 3 \
+               --retry-delay 2 \
+               --fail \
+               --location \
+               --silent \
+               --show-error \
+               --output cyclonedx-linux-x64 \
+               "https://github.com/CycloneDX/cyclonedx-cli/releases/download/v${CYCLONEDX_VERSION}/cyclonedx-linux-x64"
+
+          # Verify SHA-256
+          echo "${CYCLONEDX_SHA256}  cyclonedx-linux-x64" | sha256sum --check --strict
+
+          chmod +x cyclonedx-linux-x64
+          sudo mv cyclonedx-linux-x64 /usr/local/bin/cdx
+
+          echo "✅ CycloneDX CLI installed"
+
+      - name: Validate SBOM
+        if: inputs.generate-sbom && inputs.validate-sbom
+        run: |
+          set -euo pipefail
+
+          echo "🔍 Validating CycloneDX SBOM..."
+
+          SBOM_JSON="build/sbom/bom-release-${{ steps.get-version.outputs.version }}.cdx.json"
+
+          if cdx validate --input-file "$SBOM_JSON" --input-version 1.6; then
+            echo "✅ SBOM validation passed"
+          else
+            echo "❌ SBOM validation failed"
+            exit 1
+          fi
+
+      - name: Convert to SPDX
+        if: inputs.generate-sbom && inputs.convert-to-spdx
+        run: |
+          set -euo pipefail
+
+          echo "🔄 Converting to SPDX..."
+
+          SBOM_JSON="build/sbom/bom-release-${{ steps.get-version.outputs.version }}.cdx.json"
+          SPDX_JSON="build/sbom/bom-release-${{ steps.get-version.outputs.version }}.spdx.json"
+
+          if cdx convert --input-file "$SBOM_JSON" --output-file "$SPDX_JSON" --output-format spdxjson; then
+            echo "✅ SPDX conversion successful: $SPDX_JSON"
+          else
+            echo "❌ SPDX conversion failed"
+            exit 1
+          fi
+
+      - name: Install Cosign
+        if: inputs.generate-sbom && inputs.sign-sbom
+        # sigstore/cosign-installer@v4.0.0
+        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da
+
+      - name: Sign SBOMs with Cosign
+        if: inputs.generate-sbom && inputs.sign-sbom
+        run: |
+          set -euo pipefail
+
+          cd build/sbom
+
+          echo "🔏 Signing SBOMs with Cosign (keyless OIDC)..."
+
+          for file in *.cdx.json *.cdx.xml *.spdx.json; do
+            [ -f "$file" ] || continue
+            echo "🔏 Signing: $file"
+            cosign sign-blob "$file" \
+              --bundle="${file}.sigstore.json" \
+              --yes
+            echo "✅ Signed: $file"
+          done
+
+      - name: Verify signatures
+        if: inputs.generate-sbom && inputs.sign-sbom
+        run: |
+          set -euo pipefail
+
+          cd build/sbom
+
+          echo "✔️  Verifying Cosign signatures..."
+
+          for bundle in *.sigstore.json; do
+            [ -f "$bundle" ] || continue
+            file="${bundle%.sigstore.json}"
+            echo "✔️  Verifying: $file"
+            cosign verify-blob "$file" \
+              --bundle="$bundle" \
+              --certificate-identity-regexp=".*" \
+              --certificate-oidc-issuer-regexp=".*"
+          done
+
+          echo "✅ All signatures verified"
+
+      - name: Set SBOM output paths
+        if: inputs.generate-sbom
+        id: sbom-paths
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          echo "json=build/sbom/bom-release-${VERSION}.cdx.json" >> $GITHUB_OUTPUT
+          echo "xml=build/sbom/bom-release-${VERSION}.cdx.xml" >> $GITHUB_OUTPUT
+          if [ -f "build/sbom/bom-release-${VERSION}.spdx.json" ]; then
+            echo "spdx=build/sbom/bom-release-${VERSION}.spdx.json" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish artifacts
+        if: inputs.publish-artifacts
+        run: |
+          set -euo pipefail
+
+          echo "📤 Publishing artifacts..."
+
+          ./gradlew publish ${{ inputs.gradle-args }}
+
+      - name: Attest build provenance
+        # actions/attest-build-provenance@v2.0.0
+        uses: actions/attest-build-provenance@7bcbc6a0e5c3d3d7ef75dc4cebc6c9d286ec4bb9
+        with:
+          subject-path: |
+            **/build/libs/*.jar
+            **/build/libs/*.aar
+            build/sbom/*.cdx.json
+            build/sbom/*.spdx.json
+
+      - name: Upload SBOM artifacts
+        if: inputs.generate-sbom
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+        with:
+          name: sbom-release-${{ steps.get-version.outputs.version }}
+          path: build/sbom/*
+          retention-days: 365
+
+      - name: Upload build artifacts
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+        with:
+          name: release-artifacts-${{ steps.get-version.outputs.version }}
+          path: |
+            **/build/libs/*.jar
+            **/build/libs/*.aar
+            !**/*-javadoc.jar
+            !**/*-sources.jar
+          retention-days: 365
+
+      - name: Create GitHub Release
+        if: inputs.create-github-release
+        # softprops/action-gh-release@v2.2.0
+        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
+        with:
+          tag_name: ${{ github.ref }}
+          name: Release ${{ steps.get-version.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            **/build/libs/*.jar
+            **/build/libs/*.aar
+            build/sbom/*.cdx.json
+            build/sbom/*.cdx.xml
+            build/sbom/*.spdx.json
+            build/sbom/*.sigstore.json
+
+      - name: Release summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🚀 Gradle Release Summary
+
+          **Version:** \`${{ steps.get-version.outputs.version }}\`
+          **Java:** ${{ inputs.java-version }} (${{ inputs.java-distribution }})
+          **Verification:** 🔒 Strict mode enforced
+
+          ### 📦 Security Features
+
+          - ✅ Gradle wrapper integrity verified
+          - ✅ Dependency verification enforced (SHA-256)
+          - ✅ Lockfile drift check passed
+          - ${{ inputs.generate-sbom && '✅ SBOM generated (CycloneDX v1.6)' || '⏭️ SBOM generation skipped' }}
+          - ${{ inputs.validate-sbom && '✅ SBOM validated' || '⏭️ SBOM validation skipped' }}
+          - ${{ inputs.convert-to-spdx && '✅ SPDX conversion complete' || '⏭️ SPDX conversion skipped' }}
+          - ${{ inputs.sign-sbom && '✅ SBOMs signed with Cosign (keyless OIDC)' || '⏭️ SBOM signing skipped' }}
+
+          ### 🔐 Attestation
+
+          - ✅ Build provenance attested
+          - ✅ Artifacts uploaded to GitHub release
+
+          ### 🔍 Verification
+
+          Verify attestations:
+          \`\`\`bash
+          gh attestation verify <artifact> --repo ${{ github.repository }}
+          \`\`\`
+
+          Verify SBOM signatures:
+          \`\`\`bash
+          cosign verify-blob build/sbom/bom-release-${{ steps.get-version.outputs.version }}.cdx.json \\
+            --bundle=build/sbom/bom-release-${{ steps.get-version.outputs.version }}.cdx.json.sigstore.json \\
+            --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \\
+            --certificate-identity-regexp=".*github.com/${{ github.repository_owner }}/.*"
+          \`\`\`
+          EOF

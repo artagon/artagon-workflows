@@ -1,0 +1,49 @@
+# Example Release Workflow for Gradle Projects
+# Copy this to .github/workflows/release.yml in your project
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - 'bom-v*'
+
+jobs:
+  release:
+    name: Release to GitHub
+    uses: artagon/artagon-workflows/.github/workflows/gradle_release.yml@main
+    permissions:
+      contents: write       # Create releases
+      packages: write       # Publish artifacts
+      id-token: write       # OIDC for Cosign keyless signing
+      attestations: write   # Attest artifacts
+    with:
+      # Java configuration
+      java-version: '25'
+      java-distribution: 'temurin'
+
+      # Wrapper verification
+      verify-wrapper: true
+      # Optional: Provide wrapper SHA-256 for extra security
+      # wrapper-sha256: '5313c32c68e98e6bd396d7c43a60ba729d47f8e8e10315eddb2be912aafde67e'
+
+      # SBOM configuration
+      generate-sbom: true           # Generate CycloneDX SBOM
+      validate-sbom: true           # Validate SBOM against schema
+      convert-to-spdx: true         # Convert to SPDX format
+      sign-sbom: true               # Sign with Cosign (keyless)
+
+      # Release configuration
+      create-github-release: true   # Create GitHub release
+      publish-artifacts: false      # Set to true if you have a 'publish' task
+
+      # Build configuration
+      gradle-args: ''               # Additional Gradle arguments
+
+    # Optional: Pass secrets if publishing to external repositories
+    # secrets:
+    #   OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+    #   OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+    #   GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+    #   GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
