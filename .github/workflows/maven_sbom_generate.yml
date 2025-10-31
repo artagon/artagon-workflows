@@ -228,7 +228,8 @@ jobs:
           echo "✅ All signatures verified"
 
       - name: Upload SBOMs
-        uses: actions/upload-artifact@v4
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: sbom-${{ steps.meta.outputs.build-type }}-${{ steps.meta.outputs.version }}
           path: target/sbom/*
