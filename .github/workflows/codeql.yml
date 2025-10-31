@@ -78,11 +78,25 @@ jobs:
       - name: Manual Build
         if: inputs.build-mode == 'manual'
         run: |
+          set -euo pipefail
+
           BUILD_CMD="${{ inputs.build-command }}"
+
+          # Validate build command is not empty
           if [ -z "$BUILD_CMD" ]; then
             echo "❌ build-mode is 'manual' but build-command is empty"
             exit 1
           fi
+
+          # Validate build command contains only safe characters
+          # Allow: alphanumeric, spaces, hyphens, underscores, dots, slashes, equals, colons
+          if ! echo "$BUILD_CMD" | grep -qE '^[a-zA-Z0-9 _./:=-]+$'; then
+            echo "❌ Invalid build-command: contains disallowed characters"
+            echo "Command: $BUILD_CMD"
+            echo "Allowed characters: alphanumeric, spaces, hyphens, underscores, dots, slashes, equals, colons"
+            exit 1
+          fi
+
           echo "Running build command: $BUILD_CMD"
           eval "$BUILD_CMD"
 
