@@ -110,8 +110,8 @@ jobs:
         uses: bazelbuild/setup-bazelisk@b63ef97e907d9f0dc8c6f99a88a89f63d533addc
 
       - name: Mount Bazel cache
-        # actions/cache@v4.1.2
-        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a
+        # actions/cache@v4.2.0
+        uses: actions/cache@6b4aaeccebf87edbd8d8e8efe558f8e66d92e814
         with:
           path: |
             ~/.cache/bazel
@@ -171,8 +171,8 @@ jobs:
         uses: bazelbuild/setup-bazelisk@b63ef97e907d9f0dc8c6f99a88a89f63d533addc
 
       - name: Mount Bazel cache
-        # actions/cache@v4.1.2
-        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a
+        # actions/cache@v4.2.0
+        uses: actions/cache@6b4aaeccebf87edbd8d8e8efe558f8e66d92e814
         with:
           path: |
             ~/.cache/bazel
