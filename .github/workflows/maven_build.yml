@@ -63,7 +63,7 @@ jobs:
 
       - name: Cache Maven packages
         # actions/cache@v4.2.0
-        uses: actions/cache@6b4aaeccebf87edbd8d8e8efe558f8e66d92e814
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
         with:
           path: ~/.m2/repository
           key: ${{ inputs.cache-key-prefix }}-${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
