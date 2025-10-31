@@ -18,6 +18,11 @@ on:
         required: false
         type: string
         default: ''
+      verify-wrapper:
+        description: 'Verify Gradle wrapper integrity'
+        required: false
+        type: boolean
+        default: true
       wrapper-sha256:
         description: 'Expected SHA-256 of gradle-wrapper.jar'
         required: false
@@ -90,6 +95,7 @@ jobs:
           distribution: ${{ inputs.java-distribution }}
 
       - name: Verify Gradle wrapper integrity
+        if: inputs.verify-wrapper
         run: |
           set -euo pipefail
 

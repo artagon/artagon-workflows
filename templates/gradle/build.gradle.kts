@@ -123,14 +123,8 @@ tasks {
         dependsOn("cyclonedxBom")
     }
 
-    // Generate lockfiles
-    register("lockDependencies") {
-        group = "verification"
-        description = "Generate dependency lockfiles for all configurations"
-        doFirst {
-            println("Generating dependency lockfiles...")
-        }
-    }
+    // Generate lockfiles using standard Gradle command:
+    // ./gradlew dependencies --write-locks
 
     // Verify lockfiles
     register("verifyLockfiles") {

@@ -92,6 +92,9 @@ dependencyResolutionManagement {
 enableFeaturePreview("STABLE_CONFIGURATION_CACHE")
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
+// Dependency verification is enabled via verification-metadata.xml
+// Generate with: ./gradlew --write-verification-metadata sha256 help
+
 // Include subprojects
 // include("subproject1")
 // include("subproject2")
