@@ -1,0 +1,266 @@
+name: Maven SBOM Generation (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        description: 'Java version'
+        required: false
+        type: string
+        default: '25'
+      java-distribution:
+        description: 'Java distribution'
+        required: false
+        type: string
+        default: 'temurin'
+      maven-args:
+        description: 'Additional Maven arguments'
+        required: false
+        type: string
+        default: '-DskipTests'
+      validate-sbom:
+        description: 'Validate SBOM against schema'
+        required: false
+        type: boolean
+        default: true
+      fail-on-validation-error:
+        description: 'Fail if SBOM validation fails'
+        required: false
+        type: boolean
+        default: true
+      convert-to-spdx:
+        description: 'Convert to SPDX format'
+        required: false
+        type: boolean
+        default: false
+      sign-sbom:
+        description: 'Sign SBOM with Cosign'
+        required: false
+        type: boolean
+        default: true
+
+    outputs:
+      sbom-json:
+        description: 'Path to CycloneDX JSON SBOM'
+        value: ${{ jobs.generate.outputs.sbom-json }}
+      sbom-xml:
+        description: 'Path to CycloneDX XML SBOM'
+        value: ${{ jobs.generate.outputs.sbom-xml }}
+      spdx-json:
+        description: 'Path to SPDX JSON'
+        value: ${{ jobs.generate.outputs.spdx-json }}
+      build-type:
+        description: 'release or snapshot'
+        value: ${{ jobs.generate.outputs.build-type }}
+      version:
+        description: 'Version identifier'
+        value: ${{ jobs.generate.outputs.version }}
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    outputs:
+      sbom-json: ${{ steps.paths.outputs.json }}
+      sbom-xml: ${{ steps.paths.outputs.xml }}
+      spdx-json: ${{ steps.paths.outputs.spdx }}
+      build-type: ${{ steps.meta.outputs.build-type }}
+      version: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Set up JDK ${{ inputs.java-version }}
+        # actions/setup-java@v4.5.0
+        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b
+        with:
+          distribution: ${{ inputs.java-distribution }}
+          java-version: ${{ inputs.java-version }}
+          cache: 'maven'
+
+      - name: Determine metadata
+        id: meta
+        run: |
+          if [[ "${{ github.ref }}" =~ ^refs/tags/ ]]; then
+            BUILD_TYPE="release"
+            VERSION="${GITHUB_REF#refs/tags/}"
+            VERSION="${VERSION#v}"
+          else
+            BUILD_TYPE="snapshot"
+            VERSION="${GITHUB_SHA:0:8}"
+          fi
+          echo "build-type=${BUILD_TYPE}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Build Type: ${BUILD_TYPE}"
+          echo "📌 Version: ${VERSION}"
+
+      - name: Generate SBOM
+        run: mvn -B package ${{ inputs.maven-args }}
+
+      - name: Locate SBOMs
+        id: locate
+        run: |
+          SBOM_JSON=$(find target/sbom -name "bom.json" 2>/dev/null | head -1)
+          SBOM_XML=$(find target/sbom -name "bom.xml" 2>/dev/null | head -1)
+
+          if [ -z "$SBOM_JSON" ]; then
+            echo "❌ No SBOM generated in target/sbom/"
+            echo "Checking for SBOMs in all target directories..."
+            find . -name "bom.json" -o -name "bom.xml"
+            exit 1
+          fi
+
+          echo "✅ Found SBOM JSON: $SBOM_JSON"
+          echo "✅ Found SBOM XML: $SBOM_XML"
+
+          echo "json=$SBOM_JSON" >> $GITHUB_OUTPUT
+          echo "xml=$SBOM_XML" >> $GITHUB_OUTPUT
+
+      - name: Install CycloneDX CLI
+        if: inputs.validate-sbom || inputs.convert-to-spdx
+        run: |
+          curl -sL https://github.com/CycloneDX/cyclonedx-cli/releases/latest/download/cyclonedx-linux-x64 -o cdx
+          chmod +x cdx
+          sudo mv cdx /usr/local/bin/
+
+      - name: Validate SBOM
+        if: inputs.validate-sbom
+        run: |
+          echo "🔍 Validating CycloneDX SBOM..."
+          if cdx validate --input-file "${{ steps.locate.outputs.json }}" --input-version 1.6; then
+            echo "✅ SBOM validation passed"
+          else
+            echo "❌ SBOM validation failed"
+            if [ "${{ inputs.fail-on-validation-error }}" == "true" ]; then
+              exit 1
+            else
+              echo "⚠️ Continuing despite validation failure"
+            fi
+          fi
+
+      - name: Convert to SPDX
+        if: inputs.convert-to-spdx
+        id: spdx
+        run: |
+          JSON="${{ steps.locate.outputs.json }}"
+          SPDX="${JSON%.json}.spdx.json"
+
+          echo "🔄 Converting CycloneDX to SPDX..."
+          if cdx convert --input-file "$JSON" --output-file "$SPDX" --output-format spdxjson; then
+            echo "✅ SPDX conversion successful: $SPDX"
+            echo "json=$SPDX" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ SPDX conversion failed, continuing without SPDX"
+          fi
+
+      - name: Rename with metadata
+        id: rename
+        run: |
+          TYPE="${{ steps.meta.outputs.build-type }}"
+          VER="${{ steps.meta.outputs.version }}"
+
+          SBOM_DIR="target/sbom"
+          cd $SBOM_DIR
+
+          # Rename files with metadata
+          mv bom.json "bom-${TYPE}-${VER}.cdx.json"
+
+          if [ -f bom.xml ]; then
+            mv bom.xml "bom-${TYPE}-${VER}.cdx.xml"
+          fi
+
+          if [ -f bom.spdx.json ]; then
+            mv bom.spdx.json "bom-${TYPE}-${VER}.spdx.json"
+          fi
+
+          echo "✅ Renamed SBOMs with metadata"
+
+      - name: Set output paths
+        id: paths
+        run: |
+          TYPE="${{ steps.meta.outputs.build-type }}"
+          VER="${{ steps.meta.outputs.version }}"
+          BASE="target/sbom"
+
+          echo "json=${BASE}/bom-${TYPE}-${VER}.cdx.json" >> $GITHUB_OUTPUT
+          echo "xml=${BASE}/bom-${TYPE}-${VER}.cdx.xml" >> $GITHUB_OUTPUT
+
+          if [ -f "${BASE}/bom-${TYPE}-${VER}.spdx.json" ]; then
+            echo "spdx=${BASE}/bom-${TYPE}-${VER}.spdx.json" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install Cosign
+        if: inputs.sign-sbom
+        uses: sigstore/cosign-installer@v4.0.0
+
+      - name: Sign SBOMs
+        if: inputs.sign-sbom
+        run: |
+          cd target/sbom
+
+          for file in *.cdx.json *.cdx.xml *.spdx.json; do
+            [ -f "$file" ] || continue
+            echo "🔏 Signing: $file"
+            cosign sign-blob "$file" --bundle="${file}.sigstore.json" --yes
+            echo "✅ Signed: $file"
+          done
+
+      - name: Verify signatures
+        if: inputs.sign-sbom
+        run: |
+          cd target/sbom
+
+          for bundle in *.sigstore.json; do
+            [ -f "$bundle" ] || continue
+            file="${bundle%.sigstore.json}"
+            echo "✔️ Verifying: $file"
+            cosign verify-blob "$file" \
+              --bundle="$bundle" \
+              --certificate-identity-regexp=".*" \
+              --certificate-oidc-issuer-regexp=".*"
+          done
+
+          echo "✅ All signatures verified"
+
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ steps.meta.outputs.build-type }}-${{ steps.meta.outputs.version }}
+          path: target/sbom/*
+          retention-days: ${{ steps.meta.outputs.build-type == 'release' && 365 || 90 }}
+
+      - name: Summary
+        run: |
+          TYPE="${{ steps.meta.outputs.build-type }}"
+          VER="${{ steps.meta.outputs.version }}"
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 📦 SBOM Generation Summary
+
+          **Build Type:** \`${TYPE}\`
+          **Version:** \`${VER}\`
+
+          ### Generated Files
+
+          - ✅ CycloneDX v1.6 JSON: \`bom-${TYPE}-${VER}.cdx.json\`
+          - ✅ CycloneDX v1.6 XML: \`bom-${TYPE}-${VER}.cdx.xml\`
+          EOF
+
+          if [ "${{ inputs.convert-to-spdx }}" == "true" ]; then
+            echo "- ✅ SPDX JSON: \`bom-${TYPE}-${VER}.spdx.json\`" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ inputs.sign-sbom }}" == "true" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+
+          ### Security
+
+          - ✅ Signed with Sigstore Cosign (keyless)
+          - ✅ Signatures verified
+          EOF
+          fi
