@@ -87,8 +87,8 @@ dependencyResolutionManagement {
     }
 }
 
-// Enable dependency verification
-// Generate with: ./gradlew --write-verification-metadata sha256 help
+// Enable Gradle feature previews (unrelated to dependency verification)
+// See https://docs.gradle.org/current/userguide/feature_lifecycle.html
 enableFeaturePreview("STABLE_CONFIGURATION_CACHE")
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
