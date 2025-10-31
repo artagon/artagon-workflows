@@ -1,0 +1,272 @@
+name: Gradle Build (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        description: 'Java version to use'
+        required: false
+        type: string
+        default: '25'
+      java-distribution:
+        description: 'Java distribution'
+        required: false
+        type: string
+        default: 'temurin'
+      gradle-args:
+        description: 'Additional Gradle arguments'
+        required: false
+        type: string
+        default: ''
+      run-tests:
+        description: 'Whether to run tests'
+        required: false
+        type: boolean
+        default: true
+      verify-wrapper:
+        description: 'Verify Gradle wrapper integrity'
+        required: false
+        type: boolean
+        default: true
+      verify-dependencies:
+        description: 'Enforce dependency verification'
+        required: false
+        type: boolean
+        default: true
+      check-lockfiles:
+        description: 'Check for lockfile drift'
+        required: false
+        type: boolean
+        default: true
+      wrapper-sha256:
+        description: 'Expected SHA-256 of gradle-wrapper.jar (optional)'
+        required: false
+        type: string
+        default: ''
+      cache-key-prefix:
+        description: 'Cache key prefix'
+        required: false
+        type: string
+        default: 'gradle'
+    outputs:
+      build-version:
+        description: 'The project version that was built'
+        value: ${{ jobs.build.outputs.version }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read       # Checkout code
+      packages: read       # Download artifacts (if needed)
+
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Set up JDK ${{ inputs.java-version }}
+        # actions/setup-java@v4.5.0
+        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: ${{ inputs.java-distribution }}
+
+      - name: Validate Gradle wrapper integrity
+        if: inputs.verify-wrapper
+        run: |
+          set -euo pipefail
+
+          echo "🔍 Verifying Gradle wrapper integrity..."
+
+          # Check if wrapper exists
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "❌ Gradle wrapper not found"
+            exit 1
+          fi
+
+          # Verify distributionSha256Sum is set
+          if ! grep -q "distributionSha256Sum" gradle/wrapper/gradle-wrapper.properties; then
+            echo "⚠️  distributionSha256Sum not configured in gradle-wrapper.properties"
+            echo "Add: distributionSha256Sum=<sha256-hash>"
+            if [ "${{ inputs.verify-wrapper }}" == "true" ]; then
+              exit 1
+            fi
+          else
+            echo "✅ distributionSha256Sum configured"
+          fi
+
+          # If custom SHA provided, verify wrapper JAR
+          if [ -n "${{ inputs.wrapper-sha256 }}" ]; then
+            ACTUAL_SHA=$(sha256sum gradle/wrapper/gradle-wrapper.jar | awk '{print $1}')
+            EXPECTED_SHA="${{ inputs.wrapper-sha256 }}"
+
+            if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+              echo "❌ Wrapper JAR hash mismatch!"
+              echo "Expected: $EXPECTED_SHA"
+              echo "Actual:   $ACTUAL_SHA"
+              exit 1
+            fi
+            echo "✅ Wrapper JAR hash verified: $ACTUAL_SHA"
+          fi
+
+          echo "✅ Gradle wrapper integrity verified"
+
+      - name: Setup Gradle
+        # gradle/actions/setup-gradle@v4.2.0
+        uses: gradle/actions/setup-gradle@d156388eb19639ec20ade50009f3d199ce1e2808
+        with:
+          cache-read-only: false
+          gradle-home-cache-cleanup: true
+
+      - name: Cache Gradle dependencies
+        # actions/cache@v4.2.0
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ inputs.cache-key-prefix }}-${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ inputs.cache-key-prefix }}-${{ runner.os }}-gradle-
+
+      - name: Check dependency lockfiles
+        if: inputs.check-lockfiles
+        run: |
+          set -euo pipefail
+
+          echo "🔍 Checking for lockfile drift..."
+
+          # Check if lockfiles exist
+          if ! find . -name "*.lockfile" -o -name "gradle.lockfile" | grep -q .; then
+            echo "⚠️  No Gradle lockfiles found"
+            echo "Run: ./gradlew dependencies --write-locks"
+            if [ "${{ inputs.check-lockfiles }}" == "true" ]; then
+              echo "❌ Lockfiles required but not found"
+              exit 1
+            fi
+          fi
+
+          # Verify no drift (this will be checked during build)
+          echo "✅ Lockfile check will be enforced during build"
+
+      - name: Validate inputs
+        run: |
+          set -euo pipefail
+
+          GRADLE_ARGS="${{ inputs.gradle-args }}"
+          if ! echo "$GRADLE_ARGS" | grep -qE '^[-A-Za-z0-9=.,_:/ ]*$'; then
+            echo "❌ Invalid gradle-args: $GRADLE_ARGS"
+            echo "Allowed characters: letters, numbers, space, hyphen, underscore, dot, slash, colon, equals, comma"
+            exit 1
+          fi
+
+          CACHE_PREFIX="${{ inputs.cache-key-prefix }}"
+          if [ -n "$CACHE_PREFIX" ] && ! echo "$CACHE_PREFIX" | grep -qE '^[A-Za-z0-9._-]+$'; then
+            echo "❌ Invalid cache-key-prefix: $CACHE_PREFIX"
+            echo "Allowed characters: letters, numbers, dot, underscore, hyphen"
+            exit 1
+          fi
+
+          echo "✅ Input validation passed"
+
+      - name: Get project version
+        id: get-version
+        run: |
+          VERSION=$(./gradlew properties -q | grep "^version:" | awk '{print $2}')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Project version: $VERSION"
+
+      - name: Build with Gradle (Verify Dependencies)
+        if: inputs.verify-dependencies
+        run: |
+          set -euo pipefail
+
+          echo "🔒 Building with dependency verification enabled..."
+
+          BUILD_CMD="./gradlew clean build --verification-mode strict"
+
+          if [ "${{ inputs.run-tests }}" != "true" ]; then
+            BUILD_CMD="$BUILD_CMD -x test"
+          fi
+
+          BUILD_CMD="$BUILD_CMD ${{ inputs.gradle-args }}"
+
+          echo "Executing: $BUILD_CMD"
+          eval "$BUILD_CMD"
+
+      - name: Build with Gradle (Standard)
+        if: ${{ !inputs.verify-dependencies }}
+        run: |
+          set -euo pipefail
+
+          BUILD_CMD="./gradlew clean build"
+
+          if [ "${{ inputs.run-tests }}" != "true" ]; then
+            BUILD_CMD="$BUILD_CMD -x test"
+          fi
+
+          BUILD_CMD="$BUILD_CMD ${{ inputs.gradle-args }}"
+
+          echo "Executing: $BUILD_CMD"
+          eval "$BUILD_CMD"
+
+      - name: Verify no lockfile drift
+        if: inputs.check-lockfiles && success()
+        run: |
+          set -euo pipefail
+
+          echo "🔍 Checking for lockfile changes..."
+
+          if git diff --exit-code '*.lockfile' 'gradle.lockfile' 2>/dev/null; then
+            echo "✅ No lockfile drift detected"
+          else
+            echo "❌ Lockfile drift detected!"
+            echo ""
+            echo "Changes:"
+            git diff '*.lockfile' 'gradle.lockfile'
+            echo ""
+            echo "To fix: ./gradlew dependencies --write-locks"
+            exit 1
+          fi
+
+      - name: Upload build artifacts
+        if: success()
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+        with:
+          name: build-artifacts-${{ steps.get-version.outputs.version }}
+          path: |
+            **/build/libs/*.jar
+            **/build/libs/*.aar
+            !**/*-javadoc.jar
+            !**/*-sources.jar
+          retention-days: 7
+
+      - name: Upload test results
+        if: always() && inputs.run-tests
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+        with:
+          name: test-results-${{ steps.get-version.outputs.version }}
+          path: |
+            **/build/test-results/**/*.xml
+            **/build/reports/tests/**
+          retention-days: 7
+
+      - name: Build summary
+        if: always()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🏗️ Gradle Build Summary
+
+          **Version:** \`${{ steps.get-version.outputs.version }}\`
+          **Java:** ${{ inputs.java-version }} (${{ inputs.java-distribution }})
+          **Tests:** ${{ inputs.run-tests && '✅ Enabled' || '⏭️ Skipped' }}
+          **Dependency Verification:** ${{ inputs.verify-dependencies && '🔒 Enforced' || '⚠️ Disabled' }}
+          **Wrapper Verification:** ${{ inputs.verify-wrapper && '✅ Verified' || '⏭️ Skipped' }}
+          **Lockfile Check:** ${{ inputs.check-lockfiles && '🔒 Enforced' || '⏭️ Skipped' }}
+          EOF

@@ -1,0 +1,34 @@
+# Example CI Workflow for Gradle Projects
+# Copy this to .github/workflows/ci.yml in your project
+
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    name: Build and Test
+    uses: artagon/artagon-workflows/.github/workflows/gradle_build.yml@main
+    with:
+      # Java configuration
+      java-version: '25'
+      java-distribution: 'temurin'
+
+      # Security features
+      verify-wrapper: true           # Verify Gradle wrapper integrity
+      verify-dependencies: true      # Enforce dependency verification
+      check-lockfiles: true          # Check for lockfile drift
+
+      # Optional: Provide wrapper SHA-256 for extra security
+      # wrapper-sha256: '5313c32c68e98e6bd396d7c43a60ba729d47f8e8e10315eddb2be912aafde67e'
+
+      # Build configuration
+      run-tests: true                # Run tests
+      gradle-args: ''                # Additional Gradle arguments
+
+      # Caching
+      cache-key-prefix: 'gradle'     # Cache key prefix
