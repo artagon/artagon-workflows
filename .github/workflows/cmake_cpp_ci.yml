@@ -32,12 +32,12 @@ on:
         type: boolean
         default: true
       cxx-standard:
-        description: 'C++ standard version (17, 20, 23)'
+        description: 'C++ standard version (17, 20, 23, 26)'
         required: false
         type: string
         default: '23'
       test-standards:
-        description: 'Test multiple C++ standards (comma-separated: 17,20,23)'
+        description: 'Test multiple C++ standards (comma-separated: 17,20,23,26)'
         required: false
         type: string
         default: ''
@@ -64,9 +64,9 @@ jobs:
           fi
 
           CXX_STANDARD="${{ inputs.cxx-standard }}"
-          if ! echo "$CXX_STANDARD" | grep -qE '^(17|20|23)$'; then
+          if ! echo "$CXX_STANDARD" | grep -qE '^(17|20|23|26)$'; then
             echo "❌ Invalid cxx-standard: $CXX_STANDARD"
-            echo "Allowed values: 17, 20, 23"
+            echo "Allowed values: 17, 20, 23, 26"
             exit 1
           fi
 

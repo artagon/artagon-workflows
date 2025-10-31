@@ -8,7 +8,7 @@
 #     tags: ['v*']
 # jobs:
 #   release:
-#     uses: artagon/artagon-common/.github/workflows/maven-central-release.yml@main
+#     uses: artagon/artagon-workflows/.github/workflows/maven_central_release.yml@main
 #     secrets: inherit
 
 name: Maven Central Release (Reusable)

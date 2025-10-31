@@ -1,5 +1,11 @@
 # Artagon Workflows
 
+[![Workflow Validation](https://github.com/artagon/artagon-workflows/actions/workflows/test_lint.yml/badge.svg)](https://github.com/artagon/artagon-workflows/actions/workflows/test_lint.yml)
+[![Security Scan](https://github.com/artagon/artagon-workflows/actions/workflows/test_security.yml/badge.svg)](https://github.com/artagon/artagon-workflows/actions/workflows/test_security.yml)
+[![CodeQL](https://github.com/artagon/artagon-workflows/actions/workflows/codeql.yml/badge.svg)](https://github.com/artagon/artagon-workflows/actions/workflows/codeql.yml)
+[![License](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/artagon/artagon-workflows?include_prereleases)](https://github.com/artagon/artagon-workflows/releases)
+
 Reusable GitHub Actions workflows for Artagon projects providing standardized CI/CD pipelines for Maven, C/C++, and Bazel builds.
 
 ## About

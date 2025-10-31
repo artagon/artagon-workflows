@@ -8,7 +8,7 @@
 #     tags: ['v*']
 # jobs:
 #   release:
-#     uses: artagon/artagon-common/.github/workflows/maven-github-release.yml@main
+#     uses: artagon/artagon-workflows/.github/workflows/maven_github_release.yml@main
 #     secrets: inherit
 
 name: GitHub Packages Release (Reusable)
