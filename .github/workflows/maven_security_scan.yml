@@ -1,3 +1,23 @@
+# Reusable Maven Security Scan Workflow
+#
+# Runs security scans including OWASP Dependency Check,
+# CodeQL analysis, and vulnerability detection.
+#
+# Usage in your project's .github/workflows/security.yml:
+#
+# name: Security Scan
+# on:
+#   push:
+#     branches: [main]
+#   pull_request:
+#   schedule:
+#     - cron: '0 6 * * 1'  # Weekly on Mondays
+# jobs:
+#   scan:
+#     uses: artagon/artagon-workflows/.github/workflows/maven_security_scan.yml@main
+#     with:
+#       run-dependency-check: true
+
 name: Security Scan (Reusable)
 
 on:

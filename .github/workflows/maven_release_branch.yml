@@ -1,3 +1,24 @@
+# Reusable Maven Release Branch Workflow
+#
+# Creates a release branch with version preparation.
+# Handles version updates and branch creation.
+#
+# Usage in your project's .github/workflows/release-branch.yml:
+#
+# name: Create Release Branch
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       version:
+#         description: 'Release version (e.g., 1.0.0)'
+#         required: true
+# jobs:
+#   release:
+#     uses: artagon/artagon-workflows/.github/workflows/maven_release_branch.yml@main
+#     with:
+#       release-version: ${{ github.event.inputs.version }}
+#     secrets: inherit
+
 name: Maven Release Branch (Reusable)
 
 on:

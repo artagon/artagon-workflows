@@ -1,3 +1,21 @@
+# Reusable Gradle Release Workflow with SBOM Generation
+#
+# Builds, tests, and releases Gradle projects with SBOM attestation.
+# Creates GitHub releases with artifacts and supply chain metadata.
+#
+# Usage in your project's .github/workflows/release.yml:
+#
+# name: Release
+# on:
+#   push:
+#     tags: ['v*']
+# jobs:
+#   release:
+#     uses: artagon/artagon-workflows/.github/workflows/gradle_release.yml@main
+#     with:
+#       java-version: '21'
+#     secrets: inherit
+
 name: Gradle Release with SBOM (Reusable)
 
 on:
