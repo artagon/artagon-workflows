@@ -59,7 +59,7 @@ jobs:
           fi
 
           TARGETS="${{ inputs.targets }}"
-          if ! echo "$TARGETS" | grep -qE '^[@/A-Za-z0-9_:.\\*\\- ]+$'; then
+          if ! echo "$TARGETS" | grep -qE '^[@/A-Za-z0-9_:.* -]+$'; then
             echo "❌ Invalid targets: $TARGETS"
             echo "Allowed characters: letters, numbers, space, /, :, ., _, -, *, @"
             exit 1
