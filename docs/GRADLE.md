@@ -80,7 +80,7 @@ jobs:
 | `gradle-args` | Additional Gradle arguments | `''` |
 | `verify-wrapper` | Verify Gradle wrapper integrity | `true` |
 | `wrapper-sha256` | Expected SHA-256 of gradle-wrapper.jar | `''` |
-| `sign-artifacts` | Sign artifacts with Sigstore | `true` |
+| `sign-sbom` | Sign SBOM with Cosign | `true` |
 | `generate-sbom` | Generate SBOM | `true` |
 
 ## Security Features
@@ -165,7 +165,7 @@ jobs:
     uses: artagon/artagon-workflows/.github/workflows/gradle_release.yml@main
     with:
       java-version: '21'
-      sign-artifacts: true
+      sign-sbom: true
       generate-sbom: true
     secrets: inherit
 ```
