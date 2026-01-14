@@ -90,6 +90,56 @@ jobs:
       contents: write
 
     steps:
+      - name: Validate inputs
+        run: |
+          # Validate package-formats (semicolon-separated CPack generators)
+          if ! echo "${{ inputs.package-formats }}" | grep -qE '^[A-Z0-9]+(;[A-Z0-9]+)*$'; then
+            echo "❌ Invalid package-formats: must be semicolon-separated uppercase names (e.g., DEB;RPM;TGZ)"
+            exit 1
+          fi
+          # Validate cmake-version (version number)
+          if ! echo "${{ inputs.cmake-version }}" | grep -qE '^[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+            echo "❌ Invalid cmake-version: must be a version number (e.g., 3.20)"
+            exit 1
+          fi
+          # Validate build-type (allowlist)
+          if ! echo "${{ inputs.build-type }}" | grep -qE '^(Release|Debug|RelWithDebInfo|MinSizeRel)$'; then
+            echo "❌ Invalid build-type: must be Release, Debug, RelWithDebInfo, or MinSizeRel"
+            exit 1
+          fi
+          # Validate source-dir (path-safe characters)
+          if ! echo "${{ inputs.source-dir }}" | grep -qE '^[a-zA-Z0-9_./-]+$'; then
+            echo "❌ Invalid source-dir: contains disallowed characters"
+            exit 1
+          fi
+          # Validate build-dir (path-safe characters)
+          if ! echo "${{ inputs.build-dir }}" | grep -qE '^[a-zA-Z0-9_./-]+$'; then
+            echo "❌ Invalid build-dir: contains disallowed characters"
+            exit 1
+          fi
+          # Validate cmake-options (block dangerous patterns)
+          if [ -n "${{ inputs.cmake-options }}" ]; then
+            if echo "${{ inputs.cmake-options }}" | grep -qE '[`$]|\$\(|&&|\|\||;|>|<'; then
+              echo "❌ Invalid cmake-options: contains potentially dangerous characters"
+              exit 1
+            fi
+          fi
+          # Validate release-tag (if provided)
+          if [ -n "${{ inputs.release-tag }}" ]; then
+            if ! echo "${{ inputs.release-tag }}" | grep -qE '^[a-zA-Z0-9_./-]+$'; then
+              echo "❌ Invalid release-tag: contains disallowed characters"
+              exit 1
+            fi
+          fi
+          # Validate architecture (if provided)
+          if [ -n "${{ inputs.architecture }}" ]; then
+            if ! echo "${{ inputs.architecture }}" | grep -qE '^[a-zA-Z0-9_-]+$'; then
+              echo "❌ Invalid architecture: contains disallowed characters"
+              exit 1
+            fi
+          fi
+          echo "✓ Input validation passed"
+
       - name: Checkout code
         # actions/checkout@v4.2.2
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
