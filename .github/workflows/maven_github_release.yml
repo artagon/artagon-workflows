@@ -122,7 +122,7 @@ jobs:
             -P${{ inputs.maven-profile }} \
             -DskipTests \
             -Dregistry=https://maven.pkg.github.com/${{ github.repository_owner }} \
-            -Dtoken=${{ secrets.GITHUB_TOKEN }} \
+            -Dtoken="${GITHUB_TOKEN}" \
             ${{ inputs.maven-args }}
 
       - name: Create GitHub Release
