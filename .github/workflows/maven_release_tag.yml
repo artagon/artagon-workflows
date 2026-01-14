@@ -1,3 +1,21 @@
+# Reusable Maven Release Tag Workflow
+#
+# Releases a Maven project from a tag.
+# Handles deployment and GitHub release creation.
+#
+# Usage in your project's .github/workflows/release-tag.yml:
+#
+# name: Release from Tag
+# on:
+#   push:
+#     tags: ['v*']
+# jobs:
+#   release:
+#     uses: artagon/artagon-workflows/.github/workflows/maven_release_tag.yml@main
+#     with:
+#       java-version: '21'
+#     secrets: inherit
+
 name: Maven Release Tag (Reusable)
 
 on:

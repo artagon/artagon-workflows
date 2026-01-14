@@ -1,3 +1,24 @@
+# Reusable Maven Release Workflow
+#
+# Full Maven release workflow with version management,
+# artifact deployment, and GitHub release creation.
+#
+# Usage in your project's .github/workflows/release.yml:
+#
+# name: Release
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       release-version:
+#         description: 'Release version'
+#         required: true
+# jobs:
+#   release:
+#     uses: artagon/artagon-workflows/.github/workflows/maven_release.yml@main
+#     with:
+#       release-version: ${{ github.event.inputs.release-version }}
+#     secrets: inherit
+
 name: Maven Release (Reusable)
 
 on:

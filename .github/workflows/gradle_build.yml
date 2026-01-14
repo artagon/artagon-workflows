@@ -1,3 +1,22 @@
+# Reusable Gradle Build Workflow
+#
+# Builds Gradle projects with configurable Java version and caching.
+# Includes wrapper verification, dependency verification, and lockfile checks.
+#
+# Usage in your project's .github/workflows/build.yml:
+#
+# name: Build
+# on:
+#   push:
+#     branches: [main]
+#   pull_request:
+# jobs:
+#   build:
+#     uses: artagon/artagon-workflows/.github/workflows/gradle_build.yml@main
+#     with:
+#       java-version: '21'
+#       run-tests: true
+
 name: Gradle Build (Reusable)
 
 on:
