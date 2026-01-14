@@ -43,8 +43,9 @@ jobs:
       - name: Check for unpinned actions
         run: |
           echo "Checking for unpinned actions..."
-          UNPINNED=$(grep -rn "uses:.*@v[0-9]$" .github/workflows/ || true)
-          UNPINNED_BRANCH=$(grep -rn "uses:.*@\(master\|main\)$" .github/workflows/ || true)
+          # Exclude commented lines (usage examples) by filtering out lines containing '#'
+          UNPINNED=$(grep -rn "uses:.*@v[0-9]$" .github/workflows/ | grep -v "^\s*#" | grep -v ":#" || true)
+          UNPINNED_BRANCH=$(grep -rn "uses:.*@\(master\|main\)$" .github/workflows/ | grep -v "^\s*#" | grep -v ":#" || true)
 
           if [ -n "$UNPINNED" ] || [ -n "$UNPINNED_BRANCH" ]; then
             echo "Found unpinned actions:"
