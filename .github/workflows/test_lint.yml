@@ -116,10 +116,12 @@ jobs:
           # Common secret patterns, excluding:
           # - test_lint.yml itself
           # - Lines with environment variable references (${...} or ${{...}})
+          # Note: Using printf to avoid GitHub Actions interpreting ${{ as expression
+          DOUBLE_BRACE=$(printf '\${{')
           if grep -rE '(password|token|key|secret).*=.*["\x27][^"\x27]{10,}' .github/workflows/ \
              | grep -v "test_lint.yml" \
              | grep -v '\$[{]' \
-             | grep -v '\${{'; then
+             | grep -v "$DOUBLE_BRACE"; then
             echo "❌ Potential hardcoded secret found"
             exit 1
           fi
