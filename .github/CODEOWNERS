@@ -1,0 +1,26 @@
+# Default owner for everything in the repo
+* @trumpyla
+
+# OpenSpec specifications and AI agent configuration
+/openspec/ @trumpyla
+/.agents/ @trumpyla
+
+# GitHub workflows (security-sensitive)
+/.github/workflows/ @trumpyla
+
+# Copilot configuration
+/.github/copilot-*.md @trumpyla
+
+# Documentation
+/docs/ @trumpyla
+
+# Build system specific workflows
+/.github/workflows/maven_*.yml @trumpyla
+/.github/workflows/cmake_*.yml @trumpyla
+/.github/workflows/bazel_*.yml @trumpyla
+/.github/workflows/gradle_*.yml @trumpyla
+
+# Security scanning workflows
+/.github/workflows/codeql.yml @trumpyla
+/.github/workflows/dependency_review.yml @trumpyla
+/.github/workflows/*security*.yml @trumpyla

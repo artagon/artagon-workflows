@@ -1,0 +1,84 @@
+name: "Proposal"
+description: "Describe how to implement an approved spec."
+title: "Proposal: "
+labels:
+  - "proposal"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to propose an implementation approach for an approved spec.
+        Reference the spec issue and link to any OpenSpec change details.
+
+  - type: input
+    id: related_spec
+    attributes:
+      label: Related Spec
+      description: "Required spec issue reference."
+      placeholder: "Spec issue: #123"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_approach
+    attributes:
+      label: Proposed Approach
+      description: "How will you implement the spec?"
+      placeholder: |
+        Outline:
+        - Workflow structure
+        - Actions to use (with versions)
+        - Input/output design
+        - Security measures
+    validations:
+      required: true
+
+  - type: textarea
+    id: security_approach
+    attributes:
+      label: Security Approach
+      description: "How will security requirements be met?"
+      placeholder: |
+        - Action pinning strategy
+        - Permissions design
+        - Input validation patterns
+        - Secret handling
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: "What other approaches were evaluated?"
+      placeholder: "List options and why they were rejected."
+
+  - type: textarea
+    id: tradeoffs
+    attributes:
+      label: Trade-offs
+      description: "List trade-offs and expected impacts."
+
+  - type: textarea
+    id: implementation_plan
+    attributes:
+      label: Implementation Plan
+      description: "Phases, milestones, or tasks."
+      placeholder: |
+        - [ ] Create workflow file
+        - [ ] Pin all actions
+        - [ ] Add permissions
+        - [ ] Add input validation
+        - [ ] Create example
+        - [ ] Update documentation
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and Mitigations
+      description: "Identify risks and how they will be mitigated."
+      placeholder: |
+        Risk: ...
+        Mitigation: ...

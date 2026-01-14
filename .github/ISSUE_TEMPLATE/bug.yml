@@ -1,0 +1,78 @@
+name: "Bug Report"
+description: "Report a bug in a workflow."
+title: "Bug: "
+labels:
+  - "bug"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to report a bug in an existing workflow.
+        For security vulnerabilities, please use responsible disclosure.
+
+  - type: dropdown
+    id: workflow
+    attributes:
+      label: Affected Workflow
+      description: "Which workflow is affected?"
+      options:
+        - maven_ci.yml
+        - maven_release.yml
+        - maven_deploy.yml
+        - maven_central_release.yml
+        - maven_security_scan.yml
+        - cmake_c_ci.yml
+        - cmake_cpp_ci.yml
+        - cmake_c_release.yml
+        - cmake_cpp_release.yml
+        - bazel_multi_ci.yml
+        - bazel_multi_release.yml
+        - gradle_build.yml
+        - gradle_release.yml
+        - Other (specify in description)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: "What happened?"
+      placeholder: "Describe the bug..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: "What should have happened?"
+      placeholder: "The workflow should..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: "How can we reproduce the bug?"
+      placeholder: |
+        1. Create workflow calling...
+        2. Trigger with...
+        3. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs
+      description: "Relevant error output (redact secrets)."
+      render: shell
+
+  - type: input
+    id: version
+    attributes:
+      label: Workflow Version
+      description: "Tag or commit SHA you're using."
+      placeholder: "v1.2.0 or main"
