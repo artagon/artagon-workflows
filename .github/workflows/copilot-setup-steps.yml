@@ -22,7 +22,7 @@ jobs:
       - name: Install actionlint
         run: |
           ACTIONLINT_VERSION="1.7.4"
-          ACTIONLINT_SHA256="b4b30952f67146c6f2d9c02559dd9c5dec564572974e123e0f0d0daecf534309"
+          ACTIONLINT_SHA256="fc0a6886bbb9a23a39eeec4b176193cadb54ddbe77cdbb19b637933919545395"
 
           curl -sLO "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
           echo "${ACTIONLINT_SHA256}  actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" | sha256sum --check
