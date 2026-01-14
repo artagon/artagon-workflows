@@ -1,0 +1,74 @@
+name: "Copilot Setup Steps"
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Install actionlint
+        run: |
+          ACTIONLINT_VERSION="1.7.4"
+          ACTIONLINT_SHA256="fc0a6886bbb9a23a39eeec4b176193cadb54ddbe77cdbb19b637933919545395"
+
+          curl -sLO "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" | sha256sum --check
+          tar xzf "actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" actionlint
+          chmod +x actionlint
+          sudo mv actionlint /usr/local/bin/
+
+      - name: Validate workflows with actionlint
+        env:
+          # Exclude shellcheck warnings that produce noise in GHA contexts
+          # SC2086/SC2046: Quoting issues (safe in GHA expressions)
+          # SC2035/SC2129: Style preferences
+          # SC2006/SC2215: PowerShell syntax being checked as bash
+          # SC2181: Exit code style preference
+          SHELLCHECK_OPTS: "--exclude=SC2086 --exclude=SC2046 --exclude=SC2035 --exclude=SC2129 --exclude=SC2006 --exclude=SC2215 --exclude=SC2181"
+        run: actionlint -color
+
+      - name: Check for unpinned actions
+        run: |
+          echo "Checking for unpinned actions..."
+          # Exclude commented lines (usage examples) by filtering out lines containing '#'
+          UNPINNED=$(grep -rn "uses:.*@v[0-9]$" .github/workflows/ | grep -v "^\s*#" | grep -v ":#" || true)
+          UNPINNED_BRANCH=$(grep -rn "uses:.*@\(master\|main\)$" .github/workflows/ | grep -v "^\s*#" | grep -v ":#" || true)
+
+          if [ -n "$UNPINNED" ] || [ -n "$UNPINNED_BRANCH" ]; then
+            echo "Found unpinned actions:"
+            echo "$UNPINNED"
+            echo "$UNPINNED_BRANCH"
+            exit 1
+          fi
+          echo "All actions are properly pinned"
+
+      - name: Check for missing permissions
+        run: |
+          echo "Checking for missing permissions blocks..."
+          MISSING=""
+          for f in .github/workflows/*.yml; do
+            if ! grep -q "permissions:" "$f"; then
+              MISSING="$MISSING\n$f"
+            fi
+          done
+
+          if [ -n "$MISSING" ]; then
+            echo "Workflows missing permissions block:"
+            echo -e "$MISSING"
+            echo "Warning: Consider adding explicit permissions"
+          else
+            echo "All workflows have permissions blocks"
+          fi

@@ -1,0 +1,119 @@
+name: "Spec"
+description: "Define a new workflow capability or change using OpenSpec."
+title: "Spec: "
+labels:
+  - "spec"
+  - "spec:draft"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to define a specification (what to build). Proposals live in PRs or discussions.
+        See `openspec/AGENTS.md` for workflow rules.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: "Brief description of the workflow change."
+      placeholder: "In 1-2 sentences, describe what should be built."
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: "Why is this workflow change needed?"
+      placeholder: "Explain the problem or opportunity."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: build_system
+    attributes:
+      label: Build System
+      description: "Which build system does this affect?"
+      options:
+        - Maven
+        - CMake (C)
+        - CMake (C++)
+        - Bazel
+        - Gradle
+        - Cross-cutting (all systems)
+        - New build system
+    validations:
+      required: true
+
+  - type: dropdown
+    id: workflow_type
+    attributes:
+      label: Workflow Type
+      description: "What type of workflow is this?"
+      options:
+        - CI (build/test)
+        - Release/Deploy
+        - Security scanning
+        - Utility
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: detailed_design
+    attributes:
+      label: Detailed Design
+      description: "Technical specification and behavior details."
+      placeholder: |
+        Describe:
+        - Workflow triggers
+        - Required inputs/secrets
+        - Steps and actions used
+        - Expected outputs
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: "Checklist of testable outcomes."
+      placeholder: |
+        - [ ] Workflow file created with correct naming convention
+        - [ ] All actions pinned to commit SHAs
+        - [ ] Permissions block with least-privilege
+        - [ ] Input validation for user inputs
+        - [ ] Example usage documented
+    validations:
+      required: true
+
+  - type: textarea
+    id: security_considerations
+    attributes:
+      label: Security Considerations
+      description: "Security requirements for this workflow."
+      placeholder: |
+        - Actions to be pinned
+        - Required permissions
+        - Input validation patterns
+        - Secret handling approach
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of Scope
+      description: "Explicitly list what is not included."
+      placeholder: "Not included: ..."
+
+  - type: textarea
+    id: open_questions
+    attributes:
+      label: Open Questions
+      description: "Unresolved decisions or dependencies."
+
+  - type: input
+    id: related_issues
+    attributes:
+      label: Related Issues/Specs
+      description: "Link related specs, issues, or proposals."
+      placeholder: "#123, #456, or URL"

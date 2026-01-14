@@ -1,0 +1,107 @@
+# Label definitions for OpenSpec workflows
+# Sync with: gh label sync --filename .github/labels.yml
+
+# Spec workflow labels
+- name: "spec"
+  color: "0E8A16"
+  description: "Specification issues"
+
+- name: "proposal"
+  color: "1D76DB"
+  description: "Proposal documents"
+
+- name: "implementation"
+  color: "5319E7"
+  description: "Implementation pull requests"
+
+- name: "spec:draft"
+  color: "FBCA04"
+  description: "Work in progress specs"
+
+- name: "spec:approved"
+  color: "0E8A16"
+  description: "Approved and ready for implementation"
+
+- name: "spec:implemented"
+  color: "0B5345"
+  description: "Fully implemented specs"
+
+- name: "needs-spec"
+  color: "D93F0B"
+  description: "PR missing spec reference"
+
+- name: "scope-creep"
+  color: "B60205"
+  description: "Changes beyond spec scope"
+
+# Type labels
+- name: "bug"
+  color: "D73A4A"
+  description: "Something isn't working"
+
+- name: "enhancement"
+  color: "A2EEEF"
+  description: "New feature or request"
+
+- name: "documentation"
+  color: "0075CA"
+  description: "Documentation improvements"
+
+- name: "security"
+  color: "D93F0B"
+  description: "Security-related changes"
+
+# Build system labels
+- name: "maven"
+  color: "C2185B"
+  description: "Maven workflow related"
+
+- name: "cmake"
+  color: "064F8C"
+  description: "CMake workflow related"
+
+- name: "bazel"
+  color: "43A047"
+  description: "Bazel workflow related"
+
+- name: "gradle"
+  color: "02303A"
+  description: "Gradle workflow related"
+
+# Priority labels
+- name: "priority:critical"
+  color: "B60205"
+  description: "Critical priority"
+
+- name: "priority:high"
+  color: "D93F0B"
+  description: "High priority"
+
+- name: "priority:medium"
+  color: "FBCA04"
+  description: "Medium priority"
+
+- name: "priority:low"
+  color: "0E8A16"
+  description: "Low priority"
+
+# Status labels
+- name: "blocked"
+  color: "D93F0B"
+  description: "Blocked by external dependency"
+
+- name: "help-wanted"
+  color: "008672"
+  description: "Extra attention needed"
+
+- name: "good-first-issue"
+  color: "7057FF"
+  description: "Good for newcomers"
+
+- name: "wontfix"
+  color: "FFFFFF"
+  description: "This will not be worked on"
+
+- name: "duplicate"
+  color: "CFD3D7"
+  description: "This issue or PR already exists"

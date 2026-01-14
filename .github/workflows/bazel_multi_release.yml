@@ -73,8 +73,8 @@ jobs:
 
       - name: Create Release
         id: create_release
-        # softprops/action-gh-release@v2.2.0
-        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
+        # softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         with:
           tag_name: ${{ github.ref }}
           name: Release ${{ steps.get_version.outputs.version }}
@@ -145,8 +145,8 @@ jobs:
           tar czf ../../${PROJECT}-${VERSION}-linux-x64.tar.gz *
 
       - name: Upload tarball
-        # softprops/action-gh-release@v2.2.0
-        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
+        # softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         with:
           files: "*.tar.gz"
 
@@ -176,8 +176,8 @@ jobs:
 
       - name: Upload DEB
         if: inputs.create-packages
-        # softprops/action-gh-release@v2.2.0
-        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
+        # softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         with:
           files: "*.deb"
 
@@ -242,8 +242,8 @@ jobs:
           tar czf ../../${PROJECT}-${VERSION}-macos-universal.tar.gz *
 
       - name: Upload tarball
-        # softprops/action-gh-release@v2.2.0
-        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
+        # softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         with:
           files: "*.tar.gz"
 
@@ -284,8 +284,8 @@ jobs:
           Compress-Archive -Path dist\windows\* -DestinationPath "${PROJECT}-${VERSION}-windows-x64.zip"
 
       - name: Upload ZIP
-        # softprops/action-gh-release@v2.2.0
-        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
+        # softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         with:
           files: "*.zip"
 
@@ -345,7 +345,7 @@ jobs:
               -czf ${PROJECT}-${VERSION}-source.tar.gz .
 
       - name: Upload source archive
-        # softprops/action-gh-release@v2.2.0
-        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
+        # softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         with:
           files: "*-source.tar.gz"

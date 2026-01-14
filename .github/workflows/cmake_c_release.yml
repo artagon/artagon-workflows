@@ -95,8 +95,8 @@ jobs:
 
       - name: Create Release
         id: create_release
-        # softprops/action-gh-release@v2.2.0
-        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
+        # softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         with:
           tag_name: ${{ github.ref }}
           name: Release ${{ steps.get_version.outputs.version }}
@@ -181,8 +181,8 @@ jobs:
           dpkg-deb --build --root-owner-group debian-root ${PROJECT}_${VERSION}_amd64.deb
 
       - name: Upload DEB
-        # softprops/action-gh-release@v2.2.0
-        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
+        # softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         with:
           files: "*.deb"
 
@@ -250,8 +250,8 @@ jobs:
           cp ~/rpmbuild/RPMS/x86_64/*.rpm .
 
       - name: Upload RPM
-        # softprops/action-gh-release@v2.2.0
-        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
+        # softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         with:
           files: "*.rpm"
 
@@ -332,8 +332,8 @@ jobs:
           mv *.AppImage ${PROJECT}-${{ needs.create-release.outputs.version }}-x86_64.AppImage
 
       - name: Upload AppImage
-        # softprops/action-gh-release@v2.2.0
-        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
+        # softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         with:
           files: "*.AppImage"
 
@@ -388,8 +388,8 @@ jobs:
           fi
 
       - name: Upload DMG
-        # softprops/action-gh-release@v2.2.0
-        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
+        # softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         with:
           files: "*.dmg"
 
@@ -425,8 +425,8 @@ jobs:
           Compress-Archive -Path build\${{ env.BUILD_TYPE }}\* -DestinationPath "${PROJECT}-${VERSION}-windows-x64.zip"
 
       - name: Upload ZIP
-        # softprops/action-gh-release@v2.2.0
-        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
+        # softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         with:
           files: "*.zip"
 
@@ -453,7 +453,7 @@ jobs:
               -czf ${PROJECT}-${VERSION}-source.tar.gz .
 
       - name: Upload source tarball
-        # softprops/action-gh-release@v2.2.0
-        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
+        # softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         with:
           files: "*-source.tar.gz"

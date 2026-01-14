@@ -196,7 +196,8 @@ jobs:
 
       - name: Install Cosign
         if: inputs.sign-sbom
-        uses: sigstore/cosign-installer@v4.0.0
+        # sigstore/cosign-installer@v4.0.0
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad
 
       - name: Sign SBOMs
         if: inputs.sign-sbom

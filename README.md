@@ -6,129 +6,68 @@
 [![License](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/artagon/artagon-workflows?include_prereleases)](https://github.com/artagon/artagon-workflows/releases)
 
-Reusable GitHub Actions workflows for Artagon projects providing standardized CI/CD pipelines for Maven, C/C++, and Bazel builds.
+Reusable GitHub Actions workflows for Artagon projects providing standardized CI/CD pipelines for Maven, C/C++, Bazel, and Gradle builds.
 
 ## About
 
-**Artagon Workflows** is a comprehensive, production-ready collection of reusable GitHub Actions workflows designed to streamline software development across multiple languages and build systems. This repository provides enterprise-grade CI/CD pipelines with built-in security, compliance, and best practices for Maven (Java), CMake (C/C++), and Bazel projects.
+**Artagon Workflows** is a production-ready collection of reusable GitHub Actions workflows with enterprise-grade security, compliance, and best practices.
 
-### 🎯 Key Features
+### Key Features
 
-- **🔄 20+ Reusable Workflows** - Pre-built, tested workflows for build, test, release, and security scanning
-- **🔒 Security-First Design** - All actions pinned to commit SHAs, TLS 1.3 enforcement, certificate validation, checksum verification
-- **🚀 Multi-Language Support** - Java/Maven, C/C++/CMake, Bazel projects with language-specific optimizations
-- **📦 Release Automation** - Complete release pipelines for Maven Central, GitHub Releases, Docker Hub, and custom registries
-- **🛡️ Security Scanning** - CodeQL analysis, dependency review, vulnerability scanning, and license compliance
-- **🤖 Bot Integration** - Auto-merge for Dependabot/Renovate PRs with configurable approval workflows
-- **⚡ Performance Optimized** - Intelligent caching for Maven, Bazel, and CMake dependencies
-- **🔧 Highly Configurable** - Extensive input parameters for project-specific customization
-- **📊 PR Validation** - Semantic PR titles, branch naming conventions, commit message validation
-- **✅ Testing Support** - Python pytest, shell script testing, multi-version matrix testing
-- **📝 Comprehensive Documentation** - Detailed guides, examples, and best practices for every workflow
+- **20+ Reusable Workflows** - Build, test, release, and security scanning
+- **Security-First Design** - All actions pinned to commit SHAs, input validation, least-privilege permissions
+- **Multi-Language Support** - Java/Maven, C/C++/CMake, Bazel, Gradle
+- **Release Automation** - Maven Central, GitHub Releases, Docker Hub
+- **Security Scanning** - CodeQL, dependency review, vulnerability scanning
 
-### 🏗️ Build Systems Supported
+### Build Systems Supported
 
-- **Maven** - Full lifecycle support (compile, test, package, deploy, release)
-- **CMake** - Cross-platform C/C++ builds with multi-OS support (Linux, macOS, Windows)
-- **Bazel** - Modern build system with remote caching and hermetic builds
+| Build System | CI | Release | Security |
+|--------------|-----|---------|----------|
+| Maven | `maven_ci.yml` | `maven_release.yml` | `maven_security_scan.yml` |
+| CMake (C) | `cmake_c_ci.yml` | `cmake_c_release.yml` | - |
+| CMake (C++) | `cmake_cpp_ci.yml` | `cmake_cpp_release.yml` | - |
+| Bazel | `bazel_multi_ci.yml` | `bazel_multi_release.yml` | - |
+| Gradle | `gradle_build.yml` | `gradle_release.yml` | - |
 
-### 🔐 Security Features
+## Project Structure
 
-- **Supply Chain Security** - All GitHub Actions pinned to immutable commit SHAs
-- **Secure Downloads** - TLS 1.3, certificate validation, SHA256 checksums for all binary downloads
-- **Vulnerability Scanning** - Automated dependency and code security analysis
-- **License Compliance** - Configurable allow/deny lists for dependency licenses
-- **Secret Management** - Secure handling via GitHub Secrets, no hardcoded credentials
-- **CodeQL Analysis** - Semantic code analysis for 8+ programming languages
-- **Dependency Review** - PR-based security and license scanning for dependency changes
-
-### 🎨 Use Cases
-
-- **Open Source Projects** - Complete Maven Central release pipelines with GPG signing and attestation
-- **Enterprise Applications** - Private repository releases with security scanning and compliance
-- **Multi-Module Projects** - Support for complex Maven/Bazel multi-module builds
-- **Cross-Platform Development** - C/C++ builds across Linux, macOS, and Windows
-- **Microservices** - Docker image builds with multi-platform support
-- **Library Development** - Release automation for reusable libraries and frameworks
-- **Security-Critical Software** - Built-in vulnerability scanning and secure build practices
-
-### 🏆 Benefits
-
-- **Consistency** - Standardized CI/CD across all projects eliminates configuration drift
-- **Time Savings** - Pre-built workflows reduce setup time from hours to minutes
-- **Security** - Built-in best practices prevent common security vulnerabilities
-- **Maintainability** - Centralized workflow updates propagate to all consuming projects
-- **Reliability** - Production-tested workflows with extensive error handling
-- **Flexibility** - Configurable inputs allow project-specific customization
-- **Documentation** - Comprehensive guides and examples accelerate onboarding
-
-### 🏷️ GitHub Topics
-
-This repository is tagged with the following topics for discoverability:
-
-`github-actions` `workflow` `reusable-workflows` `ci-cd` `continuous-integration` `continuous-deployment` `devops` `automation` `build-automation` `release-automation` `maven` `cmake` `bazel` `java` `cpp` `c` `cxx` `security-scanning` `vulnerability-scanning` `codeql` `dependency-management` `supply-chain-security` `testing` `pytest` `shellcheck` `semantic-versioning` `semver` `pr-validation` `auto-merge` `dependabot` `renovate` `maven-central` `ossrh` `docker` `multi-platform` `cross-platform` `linux` `macos` `windows` `gpg-signing` `artifact-attestation` `sbom` `license-compliance`
-
-### 📊 Workflow Categories
-
-**Build & Test** - CI workflows for continuous integration and testing
-**Release & Deploy** - Automated release pipelines for multiple targets
-**Security** - Vulnerability scanning, dependency review, and CodeQL analysis
-**Validation** - PR validation, semantic commit checking, and branch naming
-**Automation** - Auto-merge, submodule updates, and maintenance workflows
-
-## Overview
-
-This repository contains production-ready, reusable GitHub Actions workflows that can be called from any Artagon project. These workflows provide:
-
-- **Consistent CI/CD** - Standardized build, test, and deployment pipelines
-- **Version Control** - Pin to specific workflow versions for stability
-- **Security** - Built-in security scanning and best practices
-- **Flexibility** - Configurable inputs for project-specific needs
-
-## Available Workflows
-
-### Maven Workflows
-
-- **[maven_ci.yml](.github/workflows/maven_ci.yml)** - Continuous integration (build, test, verify)
-- **[maven-build.yml](.github/workflows/maven-build.yml)** - Build without deploy
-- **[maven-deploy.yml](.github/workflows/maven-deploy.yml)** - Deploy snapshots to OSSRH
-- **[maven-release.yml](.github/workflows/maven-release.yml)** - Full release process
-- **[maven_release_tag.yml](.github/workflows/maven_release_tag.yml)** - Release from git tag
-- **[maven_release_branch.yml](.github/workflows/maven_release_branch.yml)** - Release from release branch
-- **[maven-central-release.yml](.github/workflows/maven-central-release.yml)** - Maven Central deployment
-- **[maven-github-release.yml](.github/workflows/maven-github-release.yml)** - GitHub release creation
-- **[maven_security_scan.yml](.github/workflows/maven_security_scan.yml)** - Security vulnerability scanning
-
-### C/C++ Workflows
-
-- **[cmake_c_ci.yml](.github/workflows/cmake_c_ci.yml)** - C project CI with CMake
-- **[cmake_cpp_ci.yml](.github/workflows/cmake_cpp_ci.yml)** - C++ project CI with CMake
-- **[cmake_c_release.yml](.github/workflows/cmake_c_release.yml)** - C project release
-- **[cmake_cpp_release.yml](.github/workflows/cmake_cpp_release.yml)** - C++ project release
-- **[cmake_cpack_release.yml](.github/workflows/cmake_cpack_release.yml)** - Multi-format packages (DEB, RPM, TGZ)
-
-### Bazel Workflows
-
-- **[bazel_multi_ci.yml](.github/workflows/bazel_multi_ci.yml)** - Bazel project CI
-- **[bazel_multi_release.yml](.github/workflows/bazel_multi_release.yml)** - Bazel project release
-
-### Utility Workflows
-
-- **[update-submodule.yml](.github/workflows/update-submodule.yml)** - Automated submodule updates
+```
+artagon-workflows/
+├── .github/
+│   ├── workflows/              # 24+ reusable workflow files
+│   ├── ISSUE_TEMPLATE/         # Issue templates (spec, proposal, bug)
+│   ├── PULL_REQUEST_TEMPLATE.md
+│   ├── CODEOWNERS
+│   ├── copilot-instructions.md
+│   └── copilot-review-instructions.md
+├── openspec/                   # Spec-driven development
+│   ├── AGENTS.md               # AI agent instructions
+│   ├── project.md              # Project context
+│   ├── contributing.md         # Contribution guidelines
+│   ├── specs/                  # Capability specifications
+│   │   ├── workflow-security/  # Security requirements
+│   │   ├── maven-workflows/    # Maven workflow specs
+│   │   ├── cmake-workflows/    # CMake workflow specs
+│   │   └── bazel-workflows/    # Bazel workflow specs
+│   └── changes/                # Change proposals and archive
+├── .agents/                    # AI agent context
+│   ├── context/                # Glossary and context
+│   ├── policies/               # Security guardrails
+│   └── workflows/              # Agent workflow guides
+├── docs/                       # Operational documentation
+├── examples/                   # Usage examples
+├── templates/                  # Starter templates
+└── test/                       # Test fixtures
+```
 
 ## Quick Start
 
-### Maven CI Example
+### Maven CI
 
 ```yaml
-# .github/workflows/ci.yml
 name: CI
-
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
+on: [push, pull_request]
 
 jobs:
   ci:
@@ -136,17 +75,11 @@ jobs:
     secrets: inherit
 ```
 
-### C++ CI Example
+### CMake C++ CI
 
 ```yaml
-# .github/workflows/ci.yml
 name: CI
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+on: [push, pull_request]
 
 jobs:
   ci:
@@ -156,17 +89,11 @@ jobs:
     secrets: inherit
 ```
 
-### Bazel CI Example
+### Bazel CI
 
 ```yaml
-# .github/workflows/ci.yml
 name: CI
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+on: [push, pull_request]
 
 jobs:
   ci:
@@ -178,119 +105,124 @@ jobs:
 
 ## Versioning
 
-Workflows are versioned using git tags. Pin to a specific version for stability:
-
 ```yaml
 # Pin to major version (recommended)
 uses: artagon/artagon-workflows/.github/workflows/maven_ci.yml@v1
 
 # Pin to specific release
 uses: artagon/artagon-workflows/.github/workflows/maven_ci.yml@v1.2.0
-
-# Use latest (not recommended for production)
-uses: artagon/artagon-workflows/.github/workflows/maven_ci.yml@main
 ```
 
-## Release Strategy
+## Security Requirements
 
-Artagon projects follow a **release branch strategy** for stable, predictable releases:
+All workflows follow strict security requirements:
 
-### Branch Structure
+1. **Action Pinning** - All actions pinned to commit SHAs
+2. **Permissions** - Explicit least-privilege permissions on all jobs
+3. **Input Validation** - All user inputs validated before shell execution
+4. **Secret Handling** - Secrets in config files, never in CLI arguments
+5. **Binary Verification** - Checksum verification for all downloads
 
-- **`main` branch**: Always has SNAPSHOT versions (e.g., `1.0.9-SNAPSHOT`)
-- **`release-X.Y.Z` branches**: Have release versions without SNAPSHOT (e.g., `1.0.8`)
-- **Tags**: Created on release branches (e.g., `v1.0.8`)
+See [openspec/specs/workflow-security/spec.md](openspec/specs/workflow-security/spec.md) for details.
 
-### Release Process
+## OpenSpec Workflow
+
+This repository uses **OpenSpec** for spec-driven development.
+
+### Key Concepts
+
+- **Specs** (`openspec/specs/`) - Current truth: what IS built
+- **Changes** (`openspec/changes/`) - Proposals: what SHOULD change
+- **Archive** (`openspec/changes/archive/`) - History: completed changes
+
+### Common Commands
 
 ```bash
-# 1. Ensure main is at next SNAPSHOT version
-main: 1.0.9-SNAPSHOT
-
-# 2. Create release branch from commit at desired SNAPSHOT
-git checkout -b release-1.0.8 <commit-at-1.0.8-SNAPSHOT>
-git push origin release-1.0.8
-
-# 3. Trigger release workflow from release branch
-# The workflow removes -SNAPSHOT and creates v1.0.8 tag
-
-# 4. Result
-main:          1.0.9-SNAPSHOT (unchanged)
-release-1.0.8: 1.0.8          (frozen for hotfixes)
-tag v1.0.8:    created
+openspec list              # Active changes
+openspec list --specs      # Capabilities
+openspec show [item]       # View details
+openspec validate --strict # Validate
+openspec archive <id> --yes # Archive after deployment
 ```
 
-### Key Principles
+### Workflow
 
-- ✅ Main branch **always** has SNAPSHOT versions
-- ✅ Release branches **never** have SNAPSHOT versions
-- ✅ Releases are **only** created from `release-*` branches
-- ✅ Release branches are **kept** for hotfixes (not deleted)
-- ✅ Tags are created on release branches
+1. **Create** - Proposal in `openspec/changes/<change-id>/`
+2. **Implement** - Follow `tasks.md`, reference spec issue
+3. **Archive** - Move to archive after deployment
+4. **Close** - Update specs, close GitHub issue
 
-For detailed instructions, see **[RELEASE.md](docs/RELEASE.md)**.
+See [openspec/AGENTS.md](openspec/AGENTS.md) for complete workflow.
 
 ## Documentation
 
+### Workflow Guides
+
+- [Maven Workflows](docs/MAVEN.md)
+- [C/C++ Workflows](docs/CPP.md)
+- [Bazel Workflows](docs/BAZEL.md)
+- [Workflow Usage Guide](docs/WORKFLOWS_USAGE.md)
+
 ### Release Process
 
-- **[RELEASE.md](docs/RELEASE.md)** - Maven release process and language-specific guide index
-- **[Java Release Strategy](docs/RELEASE_JAVA.md)** - Maven, Gradle, SNAPSHOT versions, Maven Central
-- **[C Release Strategy](docs/RELEASE_C.md)** - CMake, Autotools, tag-based releases, ABI stability
-- **[C++ Release Strategy](docs/RELEASE_CPP.md)** - CMake, Bazel, LTS support, ABI/API management
-- **[Rust Release Strategy](docs/RELEASE_RUST.md)** - Cargo, crates.io, MSRV policy, SemVer
-- **[OSS Release Strategies Analysis](docs/OSS_RELEASE_STRATEGIES.md)** - Industry research and best practices
+- [Release Guide](docs/RELEASE.md)
+- [Java Release Strategy](docs/RELEASE_JAVA.md)
+- [C Release Strategy](docs/RELEASE_C.md)
+- [C++ Release Strategy](docs/RELEASE_CPP.md)
+- [Rust Release Strategy](docs/RELEASE_RUST.md)
 
-### Workflows
+### Testing
 
-- **[Maven Workflows](docs/MAVEN.md)** - Detailed Maven workflow documentation
-- **[C/C++ Workflows](docs/CPP.md)** - C/C++ workflow documentation
-- **[Bazel Workflows](docs/BAZEL.md)** - Bazel workflow documentation
-- **[Examples](examples/)** - Complete workflow usage examples
+- [Testing Guide](docs/TESTING.md) - Workflow testing procedures
 
-## Features
+### Examples
 
-### Multi-Version Support
-
-All workflows support multiple language versions:
-- Java: 17, 21, 25 (default)
-- CMake: 3.20+
-- Bazel: 7.x (default)
-
-### Caching
-
-Automatic dependency caching for faster builds:
-- Maven dependencies
-- Bazel cache
-- CMake build cache
-
-### Security
-
-- Dependency vulnerability scanning
-- GPG signing for releases
-- Secret management via GitHub Secrets
-
-### Platform Support
-
-- Linux (ubuntu-latest)
-- macOS (optional)
-- Windows (optional for some workflows)
+- [Maven Examples](examples/maven/)
+- [CMake C Examples](examples/cmake_c/)
+- [CMake C++ Examples](examples/cmake_cpp/)
+- [Bazel Examples](examples/bazel_multi/)
+- [Rust Examples](examples/rust/)
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on adding or modifying workflows.
+This repository uses OpenSpec for contributions. See:
+
+- [openspec/contributing.md](openspec/contributing.md) - Contribution workflow
+- [CONTRIBUTING.md](CONTRIBUTING.md) - General guidelines
+
+### Branch Naming
+
+```bash
+# OpenSpec changes
+feature/workflows(<issue#>)-<short-name>
+
+# Other changes
+<type>/<scope>-<description>
+```
+
+### PR Requirements
+
+- Reference spec issue for implementations
+- Security checklist for workflow changes
+- All actions pinned to SHAs
+- Permissions declared on all jobs
+
+## AI Agents
+
+For AI assistants working on this repository:
+
+- [AGENTS.md](AGENTS.md) - Entry point
+- [CLAUDE.md](CLAUDE.md) - Claude-specific instructions
+- [COPILOT.md](COPILOT.md) - Copilot context
+- [openspec/AGENTS.md](openspec/AGENTS.md) - Detailed workflow
+- [.agents/](/.agents/) - Context and policies
 
 ## License
 
-Dual-licensed under AGPL-3.0 and Commercial licenses. See [LICENSE](LICENSE) for details.
-
-## Related Repositories
-
-- **[artagon-common](https://github.com/artagon/artagon-common)** - Project templates, configs, and scripts
-- **[artagon-license](https://github.com/artagon/artagon-license)** - License management
+Dual-licensed under AGPL-3.0 and Commercial licenses. See [LICENSE](LICENSE).
 
 ## Support
 
-For issues, questions, or contributions:
-- GitHub Issues: https://github.com/artagon/artagon-workflows/issues
-- Documentation: https://github.com/artagon/artagon-workflows/tree/main/docs
+- [GitHub Issues](https://github.com/artagon/artagon-workflows/issues)
+- [Documentation](docs/)
+- [Discussions](https://github.com/artagon/artagon-workflows/discussions)
