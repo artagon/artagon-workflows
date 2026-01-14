@@ -102,9 +102,13 @@ jobs:
         run: |
           echo "Scanning for hardcoded secrets..."
 
-          # Common secret patterns, excluding test_lint.yml itself
+          # Common secret patterns, excluding:
+          # - test_lint.yml itself
+          # - Lines with environment variable references (${...} or ${{...}})
           if grep -rE '(password|token|key|secret).*=.*["\x27][^"\x27]{10,}' .github/workflows/ \
-             | grep -v "test_lint.yml"; then
+             | grep -v "test_lint.yml" \
+             | grep -v '\$[{]' \
+             | grep -v '\${{'; then
             echo "❌ Potential hardcoded secret found"
             exit 1
           fi
