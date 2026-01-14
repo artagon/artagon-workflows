@@ -298,7 +298,7 @@ jobs:
       - name: Install Cosign
         if: inputs.generate-sbom && inputs.sign-sbom
         # sigstore/cosign-installer@v4.0.0
-        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad
 
       - name: Sign SBOMs with Cosign
         if: inputs.generate-sbom && inputs.sign-sbom
@@ -392,8 +392,8 @@ jobs:
 
       - name: Create GitHub Release
         if: inputs.create-github-release
-        # softprops/action-gh-release@v2.2.0
-        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
+        # softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         with:
           tag_name: ${{ github.ref }}
           name: Release ${{ steps.get-version.outputs.version }}

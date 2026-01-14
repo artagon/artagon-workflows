@@ -230,8 +230,8 @@ jobs:
 
       - name: Create GitHub Release
         if: inputs.create-github-release
-        # softprops/action-gh-release@v2.2.0
-        uses: softprops/action-gh-release@da07017b40e28a1a0a35a90e201ca6e05c3dda96
+        # softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
         with:
