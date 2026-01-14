@@ -124,14 +124,21 @@ jobs:
             exit 1
           fi
 
+          # Mask the key to prevent accidental exposure in logs
+          echo "::add-mask::${GPG_PRIVATE_KEY}"
+
           # Write key to temp file with restricted permissions (never expose on CLI)
           KEY_FILE=$(mktemp)
           echo "${GPG_PRIVATE_KEY}" > "${KEY_FILE}"
           chmod 600 "${KEY_FILE}"
 
-          # Import and cleanup
+          # Import and securely cleanup
           gpg --batch --import "${KEY_FILE}"
-          rm -f "${KEY_FILE}"
+          if command -v shred >/dev/null 2>&1; then
+            shred -u "${KEY_FILE}"
+          else
+            rm -f "${KEY_FILE}"
+          fi
 
           # Get key ID
           KEY_ID=$(gpg --list-secret-keys --keyid-format LONG | grep sec | head -n1 | awk '{print $2}' | cut -d'/' -f2)
