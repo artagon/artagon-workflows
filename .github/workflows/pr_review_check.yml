@@ -1,0 +1,146 @@
+# PR Review Comment Resolution Check
+#
+# This workflow checks that all review comments (including Copilot suggestions)
+# are resolved before a PR can be merged.
+#
+# Note: For maximum effectiveness, also enable "Require conversation resolution
+# before merging" in the repository's branch protection rules.
+
+name: PR Review Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+  pull_request_review_comment:
+    types: [created, edited, deleted]
+
+jobs:
+  check-unresolved-comments:
+    name: Check Unresolved Review Comments
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Check for unresolved review comments
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "🔍 Checking for unresolved review comments on PR #${PR_NUMBER}..."
+
+          # Get all review threads for this PR
+          THREADS=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${{ github.repository }}/pulls/${PR_NUMBER}/comments" \
+            --jq '.')
+
+          # Count total comments
+          TOTAL_COMMENTS=$(echo "$THREADS" | jq 'length')
+          echo "📝 Total review comments: $TOTAL_COMMENTS"
+
+          # Get review threads with resolution status using GraphQL
+          UNRESOLVED=$(gh api graphql -f query='
+            query($owner: String!, $repo: String!, $pr: Int!) {
+              repository(owner: $owner, name: $repo) {
+                pullRequest(number: $pr) {
+                  reviewThreads(first: 100) {
+                    nodes {
+                      isResolved
+                      comments(first: 1) {
+                        nodes {
+                          body
+                          author {
+                            login
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ' -f owner="${{ github.repository_owner }}" \
+            -f repo="${{ github.event.repository.name }}" \
+            -F pr="${PR_NUMBER}" \
+            --jq '.data.repository.pullRequest.reviewThreads.nodes | map(select(.isResolved == false)) | length')
+
+          echo "❓ Unresolved review threads: $UNRESOLVED"
+
+          if [ "$UNRESOLVED" -gt 0 ]; then
+            echo ""
+            echo "❌ This PR has $UNRESOLVED unresolved review thread(s)."
+            echo ""
+            echo "Please resolve all review comments before merging."
+            echo "This includes:"
+            echo "  - Copilot code review suggestions"
+            echo "  - Human reviewer comments"
+            echo "  - Any other review feedback"
+            echo ""
+            echo "To resolve a comment, either:"
+            echo "  1. Address the feedback and mark as resolved"
+            echo "  2. Reply explaining why no change is needed and resolve"
+            exit 1
+          fi
+
+          echo "✅ All review comments are resolved!"
+
+      - name: Summary
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          UNRESOLVED=$(gh api graphql -f query='
+            query($owner: String!, $repo: String!, $pr: Int!) {
+              repository(owner: $owner, name: $repo) {
+                pullRequest(number: $pr) {
+                  reviewThreads(first: 100) {
+                    nodes {
+                      isResolved
+                    }
+                  }
+                }
+              }
+            }
+          ' -f owner="${{ github.repository_owner }}" \
+            -f repo="${{ github.event.repository.name }}" \
+            -F pr="${PR_NUMBER}" \
+            --jq '.data.repository.pullRequest.reviewThreads.nodes | map(select(.isResolved == false)) | length' 2>/dev/null || echo "0")
+
+          RESOLVED=$(gh api graphql -f query='
+            query($owner: String!, $repo: String!, $pr: Int!) {
+              repository(owner: $owner, name: $repo) {
+                pullRequest(number: $pr) {
+                  reviewThreads(first: 100) {
+                    nodes {
+                      isResolved
+                    }
+                  }
+                }
+              }
+            }
+          ' -f owner="${{ github.repository_owner }}" \
+            -f repo="${{ github.event.repository.name }}" \
+            -F pr="${PR_NUMBER}" \
+            --jq '.data.repository.pullRequest.reviewThreads.nodes | map(select(.isResolved == true)) | length' 2>/dev/null || echo "0")
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 📋 PR Review Comment Status
+
+          | Status | Count |
+          |--------|-------|
+          | ✅ Resolved | ${RESOLVED} |
+          | ❌ Unresolved | ${UNRESOLVED} |
+
+          EOF
+
+          if [ "$UNRESOLVED" -gt 0 ]; then
+            echo "**Action Required:** Please resolve all review comments before merging." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Status:** All review comments have been addressed! ✅" >> $GITHUB_STEP_SUMMARY
+          fi
