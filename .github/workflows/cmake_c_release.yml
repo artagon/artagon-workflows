@@ -73,6 +73,29 @@ jobs:
       project_name: ${{ steps.get_project.outputs.name }}
 
     steps:
+      - name: Validate inputs
+        run: |
+          # Validate project-name (if provided)
+          if [ -n "${{ inputs.project-name }}" ]; then
+            if ! echo "${{ inputs.project-name }}" | grep -qE '^[a-zA-Z0-9_.-]+$'; then
+              echo "❌ Invalid project-name: contains disallowed characters"
+              exit 1
+            fi
+          fi
+          # Validate c-standard (allowlist)
+          if ! echo "${{ inputs.c-standard }}" | grep -qE '^(89|90|99|11|17|23)$'; then
+            echo "❌ Invalid c-standard: must be 89, 90, 99, 11, 17, or 23"
+            exit 1
+          fi
+          # Validate cmake-options (block dangerous patterns)
+          if [ -n "${{ inputs.cmake-options }}" ]; then
+            if echo "${{ inputs.cmake-options }}" | grep -qE '[`$]|\$\(|&&|\|\||;|>|<'; then
+              echo "❌ Invalid cmake-options: contains potentially dangerous characters"
+              exit 1
+            fi
+          fi
+          echo "✓ Input validation passed"
+
       - name: Checkout
         # actions/checkout@v4.2.2
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -275,8 +298,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build gcc file fuse libfuse2
 
-          # Download linuxdeploy with certificate validation
+          # Download linuxdeploy with certificate validation and checksum verification
           # Pinned to specific release for supply chain security
+          LINUXDEPLOY_VERSION="1-alpha-20250213-2"
+          # SHA256 for linuxdeploy 1-alpha-20250213-2 (from official release)
+          LINUXDEPLOY_SHA256="4648f278ab3ef31f819e67c30d50f462640e5365a77637d7e6f2ad9fd0b4522a"
+
+          echo "Downloading linuxdeploy ${LINUXDEPLOY_VERSION}..."
           curl --fail-with-body \
             --location \
             --silent \
@@ -284,23 +312,15 @@ jobs:
             --proto '=https' \
             --tlsv1.3 \
             --output linuxdeploy-x86_64.AppImage \
-            "https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20250213-2/linuxdeploy-x86_64.AppImage"
+            "https://github.com/linuxdeploy/linuxdeploy/releases/download/${LINUXDEPLOY_VERSION}/linuxdeploy-x86_64.AppImage"
 
-          # Download and verify SHA256 checksum
-          curl --fail-with-body \
-            --location \
-            --silent \
-            --show-error \
-            --proto '=https' \
-            --tlsv1.3 \
-            --output linuxdeploy-x86_64.AppImage.sha256 \
-            "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage.sha256"
-
-          # The .sha256 file may contain the filename, so ensure it matches
-          # Replace the filename in the .sha256 file to match the downloaded file
-          sed -i 's/  linuxdeploy-x86_64.AppImage/  linuxdeploy-x86_64.AppImage/' linuxdeploy-x86_64.AppImage.sha256
-
-          sha256sum --check linuxdeploy-x86_64.AppImage.sha256
+          # Verify SHA256 checksum
+          echo "${LINUXDEPLOY_SHA256}  linuxdeploy-x86_64.AppImage" | sha256sum --check --strict
+          if [ $? -ne 0 ]; then
+            echo "❌ SHA256 checksum verification failed for linuxdeploy"
+            exit 1
+          fi
+          echo "✅ SHA256 checksum verified"
           chmod +x linuxdeploy-x86_64.AppImage
 
       - name: Build

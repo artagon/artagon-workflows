@@ -25,10 +25,12 @@ jobs:
 
       - name: Install actionlint
         run: |
-          # Download actionlint v1.7.3
-          # Secure download over TLS 1.3 from official GitHub releases
+          # Download actionlint v1.7.3 with SHA256 verification
           VERSION="1.7.3"
+          # SHA256 checksum from official release (verified from GitHub release page)
+          ACTIONLINT_SHA256="37252b4d440b56374b0fc1726e05fd7452d30d6d774f6e9b52e65bb64475f9db"
 
+          echo "Downloading actionlint v${VERSION}..."
           curl --fail-with-body \
             --location \
             --silent \
@@ -38,8 +40,17 @@ jobs:
             --output /tmp/actionlint.tar.gz \
             "https://github.com/rhysd/actionlint/releases/download/v${VERSION}/actionlint_${VERSION}_linux_amd64.tar.gz"
 
+          # Verify SHA256 checksum
+          echo "${ACTIONLINT_SHA256}  /tmp/actionlint.tar.gz" | sha256sum --check --strict
+          if [ $? -ne 0 ]; then
+            echo "❌ SHA256 checksum verification failed for actionlint"
+            exit 1
+          fi
+          echo "✅ SHA256 checksum verified"
+
           tar -xzf /tmp/actionlint.tar.gz -C /tmp
           sudo mv /tmp/actionlint /usr/local/bin/
+          echo "✅ Installed actionlint v${VERSION}"
           actionlint --version
 
       - name: Run actionlint
@@ -102,9 +113,13 @@ jobs:
         run: |
           echo "Scanning for hardcoded secrets..."
 
-          # Common secret patterns, excluding test_lint.yml itself
+          # Common secret patterns, excluding:
+          # - test_lint.yml itself
+          # - Lines with environment variable references (${...} or ${{...}})
           if grep -rE '(password|token|key|secret).*=.*["\x27][^"\x27]{10,}' .github/workflows/ \
-             | grep -v "test_lint.yml"; then
+             | grep -v "test_lint.yml" \
+             | grep -v '\$[{]' \
+             | grep -v '\${{'; then
             echo "❌ Potential hardcoded secret found"
             exit 1
           fi

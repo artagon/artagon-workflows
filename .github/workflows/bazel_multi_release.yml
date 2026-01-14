@@ -45,12 +45,35 @@ jobs:
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       version: ${{ steps.get_version.outputs.version }}
       project_name: ${{ steps.get_project.outputs.name }}
 
     steps:
+      - name: Validate inputs
+        run: |
+          # Validate project-name (if provided)
+          if [ -n "${{ inputs.project-name }}" ]; then
+            if ! echo "${{ inputs.project-name }}" | grep -qE '^[a-zA-Z0-9_.-]+$'; then
+              echo "❌ Invalid project-name: contains disallowed characters"
+              exit 1
+            fi
+          fi
+          # Validate binary-targets (allow Bazel target patterns)
+          if ! echo "${{ inputs.binary-targets }}" | grep -qE '^[a-zA-Z0-9_:./@-]+( [a-zA-Z0-9_:./@-]+)*$'; then
+            echo "❌ Invalid binary-targets: contains disallowed characters"
+            exit 1
+          fi
+          # Validate bazel-config
+          if ! echo "${{ inputs.bazel-config }}" | grep -qE '^[a-zA-Z0-9_-]+$'; then
+            echo "❌ Invalid bazel-config: contains disallowed characters"
+            exit 1
+          fi
+          echo "✓ Input validation passed"
+
       - name: Checkout
         # actions/checkout@v4.2.2
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -86,6 +109,8 @@ jobs:
     name: Build Linux Binaries
     needs: create-release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -185,6 +210,8 @@ jobs:
     name: Build macOS Binaries
     needs: create-release
     runs-on: macos-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -251,6 +278,8 @@ jobs:
     name: Build Windows Binaries
     needs: create-release
     runs-on: windows-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -328,6 +357,8 @@ jobs:
     name: Build Source Archive
     needs: create-release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
