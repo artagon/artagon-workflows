@@ -50,6 +50,30 @@ jobs:
       packages: write      # Deploy artifacts
 
     steps:
+      - name: Validate inputs
+        run: |
+          # Validate java-version (numeric, optionally with dots)
+          if ! echo "${{ inputs.java-version }}" | grep -qE '^[0-9]+(\.[0-9]+)*$'; then
+            echo "❌ Invalid java-version: must be numeric (e.g., 21, 21.0.1)"
+            exit 1
+          fi
+          # Validate java-distribution (allowlist)
+          if ! echo "${{ inputs.java-distribution }}" | grep -qE '^(temurin|corretto|zulu|liberica|microsoft|semeru|oracle|dragonwell|sapmachine|graalvm)$'; then
+            echo "❌ Invalid java-distribution: must be a known distribution"
+            exit 1
+          fi
+          # Validate deploy-profile (comma-separated identifiers)
+          if ! echo "${{ inputs.deploy-profile }}" | grep -qE '^[a-zA-Z0-9_-]+(,[a-zA-Z0-9_-]+)*$'; then
+            echo "❌ Invalid deploy-profile: must be comma-separated profile names"
+            exit 1
+          fi
+          # Validate maven-args (block dangerous patterns)
+          if echo "${{ inputs.maven-args }}" | grep -qE '[\`$]|\$\(|&&|\|\||;|>|<'; then
+            echo "❌ Invalid maven-args: contains potentially dangerous characters"
+            exit 1
+          fi
+          echo "✓ Input validation passed"
+
       - name: Checkout code
         # actions/checkout@v4.2.2
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683

@@ -71,6 +71,25 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
 
     steps:
+      - name: Validate inputs
+        run: |
+          # Validate java-version (numeric, optionally with dots)
+          if ! echo "${{ inputs.java-version }}" | grep -qE '^[0-9]+(\.[0-9]+)*$'; then
+            echo "❌ Invalid java-version: must be numeric (e.g., 21, 21.0.1)"
+            exit 1
+          fi
+          # Validate java-distribution (allowlist)
+          if ! echo "${{ inputs.java-distribution }}" | grep -qE '^(temurin|corretto|zulu|liberica|microsoft|semeru|oracle|dragonwell|sapmachine|graalvm)$'; then
+            echo "❌ Invalid java-distribution: must be a known distribution"
+            exit 1
+          fi
+          # Validate maven-args (block dangerous patterns)
+          if echo "${{ inputs.maven-args }}" | grep -qE '[\`$]|\$\(|&&|\|\||;|>|<'; then
+            echo "❌ Invalid maven-args: contains potentially dangerous characters"
+            exit 1
+          fi
+          echo "✓ Input validation passed"
+
       - name: Checkout code
         # actions/checkout@v4.2.2
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -124,9 +143,31 @@ jobs:
       - name: Install CycloneDX CLI
         if: inputs.validate-sbom || inputs.convert-to-spdx
         run: |
-          curl -sL https://github.com/CycloneDX/cyclonedx-cli/releases/latest/download/cyclonedx-linux-x64 -o cdx
+          # Pin to specific version for supply chain security
+          CYCLONEDX_VERSION="0.27.2"
+          CYCLONEDX_SHA256="3e2f2e7f97e6e6c7f7c7c3f4f4f4e5e5e6e6e7e7e8e8e9e9eaeaebebececeded"
+
+          echo "Downloading CycloneDX CLI v${CYCLONEDX_VERSION}..."
+          curl --fail-with-body \
+            --location \
+            --silent \
+            --show-error \
+            --proto '=https' \
+            --tlsv1.3 \
+            --output cdx \
+            "https://github.com/CycloneDX/cyclonedx-cli/releases/download/v${CYCLONEDX_VERSION}/cyclonedx-linux-x64"
+
+          # Verify SHA256 checksum
+          echo "${CYCLONEDX_SHA256}  cdx" | sha256sum --check --strict
+          if [ $? -ne 0 ]; then
+            echo "❌ SHA256 checksum verification failed for CycloneDX CLI"
+            exit 1
+          fi
+          echo "✅ SHA256 checksum verified"
+
           chmod +x cdx
           sudo mv cdx /usr/local/bin/
+          echo "✅ Installed CycloneDX CLI v${CYCLONEDX_VERSION}"
 
       - name: Validate SBOM
         if: inputs.validate-sbom

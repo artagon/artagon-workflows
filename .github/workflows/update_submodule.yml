@@ -51,6 +51,20 @@ jobs:
       pull-requests: write
 
     steps:
+      - name: Validate inputs
+        run: |
+          # Validate submodule-path (allow path-safe characters only)
+          if ! echo "${{ inputs.submodule-path }}" | grep -qE '^[a-zA-Z0-9_./-]+$'; then
+            echo "❌ Invalid submodule-path: contains disallowed characters"
+            exit 1
+          fi
+          # Validate branch (allow branch-name-safe characters)
+          if ! echo "${{ inputs.branch }}" | grep -qE '^[a-zA-Z0-9_./-]+$'; then
+            echo "❌ Invalid branch: contains disallowed characters"
+            exit 1
+          fi
+          echo "✓ Input validation passed"
+
       - name: Checkout repository
         # actions/checkout@v4.2.2
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
