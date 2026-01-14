@@ -145,7 +145,7 @@ jobs:
         run: |
           # Pin to specific version for supply chain security
           CYCLONEDX_VERSION="0.27.2"
-          CYCLONEDX_SHA256="3e2f2e7f97e6e6c7f7c7c3f4f4f4e5e5e6e6e7e7e8e8e9e9eaeaebebececeded"
+          CYCLONEDX_SHA256="4c7cf63e6eab329565f7b2d99b2f1f2e4a3c9b4f692e0bb5c4c2d805cf4baba"
 
           echo "Downloading CycloneDX CLI v${CYCLONEDX_VERSION}..."
           curl --fail-with-body \
