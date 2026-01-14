@@ -1,3 +1,23 @@
+# Reusable Maven Version Bump Workflow
+#
+# Bumps the Maven project version and commits the change.
+# Useful for preparing next development cycle after a release.
+#
+# Usage in your project's .github/workflows/bump-version.yml:
+#
+# name: Bump Version
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       new-version:
+#         description: 'New version (e.g., 1.0.1-SNAPSHOT)'
+#         required: true
+# jobs:
+#   bump:
+#     uses: artagon/artagon-workflows/.github/workflows/maven_bump_version.yml@main
+#     with:
+#       new-version: ${{ github.event.inputs.new-version }}
+
 name: Bump Maven Version (Reusable)
 
 on:
