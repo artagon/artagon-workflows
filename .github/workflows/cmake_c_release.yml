@@ -89,7 +89,7 @@ jobs:
           fi
           # Validate cmake-options (block dangerous patterns)
           if [ -n "${{ inputs.cmake-options }}" ]; then
-            if echo "${{ inputs.cmake-options }}" | grep -qE '[\`$]|\$\(|&&|\|\||;|>|<'; then
+            if echo "${{ inputs.cmake-options }}" | grep -qE '[`$]|\$\(|&&|\|\||;|>|<'; then
               echo "❌ Invalid cmake-options: contains potentially dangerous characters"
               exit 1
             fi
@@ -302,7 +302,7 @@ jobs:
           # Pinned to specific release for supply chain security
           LINUXDEPLOY_VERSION="1-alpha-20250213-2"
           # SHA256 for linuxdeploy 1-alpha-20250213-2 (from official release)
-          LINUXDEPLOY_SHA256="2a7c3a96a7b5bb9b5d3bc70cc8e8a7c5ea75f05e4df7c7f9c8e9f0a1b2c3d4e5f"
+          LINUXDEPLOY_SHA256="4648f278ab3ef31f819e67c30d50f462640e5365a77637d7e6f2ad9fd0b4522a"
 
           echo "Downloading linuxdeploy ${LINUXDEPLOY_VERSION}..."
           curl --fail-with-body \

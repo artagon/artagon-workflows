@@ -119,7 +119,7 @@ jobs:
           fi
           # Validate cmake-options (block dangerous patterns)
           if [ -n "${{ inputs.cmake-options }}" ]; then
-            if echo "${{ inputs.cmake-options }}" | grep -qE '[\`$]|\$\(|&&|\|\||;|>|<'; then
+            if echo "${{ inputs.cmake-options }}" | grep -qE '[`$]|\$\(|&&|\|\||;|>|<'; then
               echo "❌ Invalid cmake-options: contains potentially dangerous characters"
               exit 1
             fi

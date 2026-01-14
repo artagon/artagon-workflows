@@ -90,7 +90,7 @@ jobs:
             exit 1
           fi
           # Validate maven-args (block dangerous patterns)
-          if echo "${{ inputs.maven-args }}" | grep -qE '[\`$]|\$\(|&&|\|\||;|>|<'; then
+          if echo "${{ inputs.maven-args }}" | grep -qE '[`$]|\$\(|&&|\|\||;|>|<'; then
             echo "❌ Invalid maven-args: contains potentially dangerous characters"
             exit 1
           fi
