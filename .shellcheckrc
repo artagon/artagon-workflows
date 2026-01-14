@@ -1,0 +1,19 @@
+# ShellCheck configuration for GitHub Actions workflows
+# These rules are disabled because they produce excessive noise in workflow contexts
+# where word splitting on GitHub Actions expressions is intentional.
+
+# SC2086: Double quote to prevent globbing and word splitting
+# Disabled: GitHub Actions expressions like ${{ inputs.foo }} are safe
+disable=SC2086
+
+# SC2046: Quote this to prevent word splitting
+# Disabled: Command substitutions like $(nproc) are intentionally unquoted for numeric values
+disable=SC2046
+
+# SC2035: Use ./*glob* so names with dashes won't become options
+# Disabled: Context-dependent, not always applicable
+disable=SC2035
+
+# SC2129: Consider using { cmd1; cmd2; } >> file
+# Disabled: Style preference, not a bug
+disable=SC2129
