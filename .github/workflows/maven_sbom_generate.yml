@@ -1,3 +1,22 @@
+# Reusable Maven SBOM Generation Workflow
+#
+# Generates CycloneDX Software Bill of Materials (SBOM).
+# Supports validation, SPDX conversion, and Sigstore signing.
+#
+# Usage in your project's .github/workflows/sbom.yml:
+#
+# name: Generate SBOM
+# on:
+#   push:
+#     branches: [main]
+#   release:
+#     types: [published]
+# jobs:
+#   sbom:
+#     uses: artagon/artagon-workflows/.github/workflows/maven_sbom_generate.yml@main
+#     with:
+#       sign-sbom: true
+
 name: Maven SBOM Generation (Reusable)
 
 on:

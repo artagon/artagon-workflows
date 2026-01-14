@@ -1,3 +1,22 @@
+# Reusable Maven Build Workflow
+#
+# Builds Maven projects with configurable Java version and caching.
+# Supports unit tests and integration tests.
+#
+# Usage in your project's .github/workflows/build.yml:
+#
+# name: Build
+# on:
+#   push:
+#     branches: [main]
+#   pull_request:
+# jobs:
+#   build:
+#     uses: artagon/artagon-workflows/.github/workflows/maven_build.yml@main
+#     with:
+#       java-version: '21'
+#       run-tests: true
+
 name: Maven Build (Reusable)
 
 on:

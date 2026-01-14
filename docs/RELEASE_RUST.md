@@ -1,5 +1,8 @@
 # Rust Release Strategy
 
+> **Status: PLANNED** - This documentation is for future Rust workflow support.
+> Currently, no Rust workflows are implemented. See [WORKFLOWS_USAGE.md](WORKFLOWS_USAGE.md) for available workflows.
+
 **Language:** Rust
 **Build System:** Cargo
 **Package Registry:** crates.io
