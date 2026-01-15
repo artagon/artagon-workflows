@@ -158,12 +158,14 @@ jobs:
 
       - name: Upload test results
         if: always()
+        continue-on-error: true
         # actions/upload-artifact@v4.4.3
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: test-results-${{ matrix.os }}-${{ matrix.config }}
           path: bazel-testlogs/
           retention-days: 7
+          overwrite: true
 
   coverage:
     name: Code Coverage
