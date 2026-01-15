@@ -1,5 +1,7 @@
 # Reusable Bazel CI Workflow
 #
+# Automatically tested via artagon-workflow-test-bazel on changes.
+#
 # Usage in your project's .github/workflows/ci.yml:
 #
 # name: CI
