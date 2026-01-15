@@ -55,6 +55,11 @@ on:
         required: false
         type: boolean
         default: false
+      openspec-path:
+        description: 'Path to openspec directory for design context'
+        required: false
+        type: string
+        default: 'openspec/'
     secrets:
       ANTHROPIC_API_KEY:
         required: true
@@ -103,6 +108,29 @@ jobs:
           fi
           echo "No security vulnerabilities found"
 
+      - name: Gather openspec context
+        id: openspec
+        run: |
+          OPENSPEC_PATH="${{ inputs.openspec-path }}"
+          if [ -d "$OPENSPEC_PATH" ]; then
+            echo "has_openspec=true" >> $GITHUB_OUTPUT
+            # List available openspec documents
+            echo "Available OpenSpec documents:" > openspec_list.txt
+            for spec_dir in "$OPENSPEC_PATH"*/; do
+              if [ -d "$spec_dir" ]; then
+                SPEC_NAME=$(basename "$spec_dir")
+                echo "- $SPEC_NAME" >> openspec_list.txt
+                for doc in design.md proposal.md tasks.md; do
+                  if [ -f "${spec_dir}${doc}" ]; then
+                    echo "  - ${doc}" >> openspec_list.txt
+                  fi
+                done
+              fi
+            done
+          else
+            echo "has_openspec=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Summary
         run: |
           echo "## Security Review Summary" >> $GITHUB_STEP_SUMMARY
@@ -110,3 +138,10 @@ jobs:
           echo "- **Findings**: ${{ steps.security.outputs.findings-count }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Model**: ${{ inputs.claude-model }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Results file**: ${{ steps.security.outputs.results-file }}" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.openspec.outputs.has_openspec }}" = "true" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### OpenSpec Design Context" >> $GITHUB_STEP_SUMMARY
+            echo "Security findings should be reviewed against project design specifications in \`${{ inputs.openspec-path }}\`" >> $GITHUB_STEP_SUMMARY
+            cat openspec_list.txt >> $GITHUB_STEP_SUMMARY
+          fi

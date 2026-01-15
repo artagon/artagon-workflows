@@ -58,6 +58,11 @@ on:
         required: false
         type: string
         default: ''
+      openspec-path:
+        description: 'Path to openspec directory for design context'
+        required: false
+        type: string
+        default: 'openspec/'
     secrets:
       ANTHROPIC_API_KEY:
         required: false
@@ -113,16 +118,44 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
+      - name: Load agent skill and openspec context
+        id: context
+        run: |
+          # Load issue triager skill if available
+          SKILL_PATH=".agents/skills/issue-triager.md"
+          if [ -f "$SKILL_PATH" ]; then
+            echo "has_skill=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_skill=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check for openspec
+          OPENSPEC_PATH="${{ inputs.openspec-path }}"
+          if [ -f ".agents/utils/openspec.sh" ]; then
+            source .agents/utils/openspec.sh
+            echo "has_openspec=$(has_openspec "$OPENSPEC_PATH")" >> $GITHUB_OUTPUT
+          elif [ -d "$OPENSPEC_PATH" ]; then
+            echo "has_openspec=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_openspec=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run Claude Issue Triage
         # Official Anthropic GitHub Action
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
-            You are a technical project manager triaging a GitHub issue.
+            ${{ steps.context.outputs.has_skill == 'true' && '# Agent Skill: Issue Triager
+
+            Read the skill definition in .agents/skills/issue-triager.md for detailed instructions on how to triage issues.' || 'You are a technical project manager triaging a GitHub issue.' }}
 
             Available labels: ${{ inputs.available-labels }}
             Project context: ${{ inputs.project-context }}
+
+            ${{ steps.context.outputs.has_openspec == 'true' && '## Project Design Context (OpenSpec)
+
+            The repository contains OpenSpec design documents in the openspec/ directory that describe the intended architecture and design decisions. Use the Read tool to examine relevant openspec files to understand the project design when triaging this issue.' || '' }}
 
             Please analyze issue #${{ github.event.issue.number }}:
             Title: ${{ github.event.issue.title }}
@@ -133,7 +166,8 @@ jobs:
             3. Suggested labels from available labels
             4. Complexity estimate (trivial/simple/moderate/complex)
             5. Technical summary
-            6. Suggested action items
+            6. Relation to OpenSpec design (if applicable)
+            7. Suggested action items
 
             ${{ inputs.add-response && 'Also provide a friendly initial response to the issue author.' || '' }}
 
@@ -161,6 +195,9 @@ jobs:
       contents: read
       issues: write
     steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
       - name: Setup Node.js
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
         with:
@@ -171,13 +208,31 @@ jobs:
           npm init -y
           npm install openai
 
+      - name: Gather openspec context
+        run: |
+          OPENSPEC_PATH="${{ inputs.openspec-path }}"
+          echo "" > openspec_context.txt
+          if [ -d "$OPENSPEC_PATH" ]; then
+            for spec_dir in "$OPENSPEC_PATH"*/; do
+              if [ -d "$spec_dir" ]; then
+                SPEC_NAME=$(basename "$spec_dir")
+                for doc in design.md proposal.md; do
+                  if [ -f "${spec_dir}${doc}" ]; then
+                    echo -e "\n--- OpenSpec: ${SPEC_NAME}/${doc} ---" >> openspec_context.txt
+                    head -100 "${spec_dir}${doc}" >> openspec_context.txt
+                  fi
+                done
+              fi
+            done
+          fi
+
       - name: Analyze issue with OpenAI
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           cat > triage.mjs << 'EOF'
           import OpenAI from 'openai';
-          import { writeFileSync } from 'fs';
+          import { writeFileSync, readFileSync, existsSync } from 'fs';
 
           const client = new OpenAI();
           const model = process.env.MODEL;
@@ -185,6 +240,13 @@ jobs:
           const context = process.env.CONTEXT;
           const title = process.env.ISSUE_TITLE;
           const body = process.env.ISSUE_BODY;
+          const openspec = existsSync('openspec_context.txt')
+            ? readFileSync('openspec_context.txt', 'utf-8').trim()
+            : '';
+
+          const openspecSection = openspec
+            ? `\n\nProject Design (OpenSpec):\n${openspec}\n`
+            : '';
 
           const response = await client.chat.completions.create({
             model: model,
@@ -193,11 +255,11 @@ jobs:
             messages: [
               {
                 role: 'system',
-                content: 'You are a technical project manager. Respond with JSON: {category, priority, suggested_labels, complexity, technical_summary, action_items, initial_response}'
+                content: 'You are a technical project manager. If OpenSpec design docs are provided, consider how the issue relates to the documented design. Respond with JSON: {category, priority, suggested_labels, complexity, technical_summary, openspec_relation, action_items, initial_response}'
               },
               {
                 role: 'user',
-                content: `Triage this issue. Available labels: ${labels}\nProject: ${context}\n\nTitle: ${title}\nBody: ${body}`
+                content: `Triage this issue. Available labels: ${labels}\nProject: ${context}${openspecSection}\n\nTitle: ${title}\nBody: ${body}`
               }
             ]
           });
@@ -266,6 +328,9 @@ jobs:
       contents: read
       issues: write
     steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
       - name: Setup Node.js
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
         with:
@@ -276,13 +341,31 @@ jobs:
           npm init -y
           npm install @google/generative-ai
 
+      - name: Gather openspec context
+        run: |
+          OPENSPEC_PATH="${{ inputs.openspec-path }}"
+          echo "" > openspec_context.txt
+          if [ -d "$OPENSPEC_PATH" ]; then
+            for spec_dir in "$OPENSPEC_PATH"*/; do
+              if [ -d "$spec_dir" ]; then
+                SPEC_NAME=$(basename "$spec_dir")
+                for doc in design.md proposal.md; do
+                  if [ -f "${spec_dir}${doc}" ]; then
+                    echo -e "\n--- OpenSpec: ${SPEC_NAME}/${doc} ---" >> openspec_context.txt
+                    head -100 "${spec_dir}${doc}" >> openspec_context.txt
+                  fi
+                done
+              fi
+            done
+          fi
+
       - name: Analyze issue with Gemini
         env:
           GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
         run: |
           cat > triage.mjs << 'EOF'
           import { GoogleGenerativeAI } from '@google/generative-ai';
-          import { writeFileSync } from 'fs';
+          import { writeFileSync, readFileSync, existsSync } from 'fs';
 
           const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
           const model = process.env.MODEL;
@@ -290,6 +373,13 @@ jobs:
           const context = process.env.CONTEXT;
           const title = process.env.ISSUE_TITLE;
           const body = process.env.ISSUE_BODY;
+          const openspec = existsSync('openspec_context.txt')
+            ? readFileSync('openspec_context.txt', 'utf-8').trim()
+            : '';
+
+          const openspecSection = openspec
+            ? `\n\nProject Design (OpenSpec):\n${openspec}\n`
+            : '';
 
           const generativeModel = genAI.getGenerativeModel({
             model: model,
@@ -299,11 +389,12 @@ jobs:
           const result = await generativeModel.generateContent(`
           Triage this GitHub issue. Available labels: ${labels}
           Project: ${context}
-
+          ${openspecSection}
           Title: ${title}
           Body: ${body}
 
-          Respond with JSON: {category, priority, suggested_labels, complexity, technical_summary, action_items}`);
+          If OpenSpec design docs are provided, consider how the issue relates to the documented design.
+          Respond with JSON: {category, priority, suggested_labels, complexity, technical_summary, openspec_relation, action_items}`);
 
           writeFileSync('analysis.json', result.response.text());
           EOF

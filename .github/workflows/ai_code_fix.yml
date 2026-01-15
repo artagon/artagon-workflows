@@ -67,6 +67,11 @@ on:
         required: false
         type: number
         default: 10
+      openspec-path:
+        description: 'Path to openspec directory for design context'
+        required: false
+        type: string
+        default: 'openspec/'
     secrets:
       ANTHROPIC_API_KEY:
         required: false
@@ -131,22 +136,53 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Load agent skill and openspec context
+        id: context
+        run: |
+          # Load code fixer skill if available
+          SKILL_PATH=".agents/skills/code-fixer.md"
+          if [ -f "$SKILL_PATH" ]; then
+            echo "has_skill=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_skill=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check for openspec
+          OPENSPEC_PATH="${{ inputs.openspec-path }}"
+          if [ -f ".agents/utils/openspec.sh" ]; then
+            source .agents/utils/openspec.sh
+            echo "has_openspec=$(has_openspec "$OPENSPEC_PATH")" >> $GITHUB_OUTPUT
+          elif [ -d "$OPENSPEC_PATH" ]; then
+            echo "has_openspec=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_openspec=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run Claude Code Fix
         # Official Anthropic GitHub Action
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
-            You are a code fixer. Analyze this repository and fix ${{ inputs.fix-type }} issues.
+            ${{ steps.context.outputs.has_skill == 'true' && '# Agent Skill: Code Fixer
+
+            Read the skill definition in .agents/skills/code-fixer.md for detailed instructions on how to fix code issues.' || 'You are a code fixer.' }}
+
+            Analyze this repository and fix ${{ inputs.fix-type }} issues.
 
             Target files pattern: ${{ inputs.target-files }}
             Maximum files to process: ${{ inputs.max-files }}
             Dry run mode: ${{ inputs.dry-run }}
 
+            ${{ steps.context.outputs.has_openspec == 'true' && '## Project Design Context (OpenSpec)
+
+            The repository contains OpenSpec design documents in the openspec/ directory. Use the Read tool to examine relevant openspec files to understand the intended design before making fixes. Ensure fixes align with the documented architecture.' || '' }}
+
             For each file that needs fixes:
             1. Identify the specific issues
             2. Provide the corrected code
             3. Explain what was changed and why
+            4. Note alignment with OpenSpec design (if applicable)
 
             Focus on:
             ${{ inputs.fix-type == 'lint' && '- Code style violations\n- Formatting issues\n- Naming conventions' || '' }}

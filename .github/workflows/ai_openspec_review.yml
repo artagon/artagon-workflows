@@ -1,0 +1,419 @@
+# Reusable AI-Powered OpenSpec Review Workflow
+#
+# Reviews OpenSpec design documents for completeness, consistency, and clarity.
+# Triggered when openspec files are created or modified in PRs.
+# Uses official Anthropic GitHub Action for Claude.
+#
+# Usage in your project's .github/workflows/openspec-review.yml:
+#
+# name: OpenSpec Review
+# on:
+#   pull_request:
+#     types: [opened, synchronize]
+#     paths:
+#       - 'openspec/**'
+# jobs:
+#   review:
+#     uses: artagon/artagon-workflows/.github/workflows/ai_openspec_review.yml@main
+#     secrets:
+#       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+name: AI OpenSpec Review
+
+on:
+  workflow_call:
+    inputs:
+      ai-provider:
+        description: 'AI provider (claude, openai, gemini)'
+        required: false
+        type: string
+        default: 'claude'
+      ai-model:
+        description: 'Specific model to use (empty for provider default)'
+        required: false
+        type: string
+        default: ''
+      openspec-path:
+        description: 'Path to openspec directory'
+        required: false
+        type: string
+        default: 'openspec/'
+      review-depth:
+        description: 'Review depth (quick, standard, thorough)'
+        required: false
+        type: string
+        default: 'thorough'
+      post-comment:
+        description: 'Post review as PR comment'
+        required: false
+        type: boolean
+        default: true
+      check-completeness:
+        description: 'Check for required sections (proposal.md, design.md, tasks.md)'
+        required: false
+        type: boolean
+        default: true
+      check-consistency:
+        description: 'Check for consistency between documents'
+        required: false
+        type: boolean
+        default: true
+      check-implementation:
+        description: 'Compare spec against existing implementation'
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: false
+      OPENAI_API_KEY:
+        required: false
+      GOOGLE_AI_API_KEY:
+        required: false
+
+jobs:
+  validate-inputs:
+    name: Validate Inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      model: ${{ steps.set-model.outputs.model }}
+    steps:
+      - name: Validate provider
+        run: |
+          set -euo pipefail
+
+          PROVIDER="${{ inputs.ai-provider }}"
+          if ! echo "$PROVIDER" | grep -qE '^(claude|openai|gemini)$'; then
+            echo "Invalid ai-provider: $PROVIDER"
+            exit 1
+          fi
+
+      - name: Set model
+        id: set-model
+        run: |
+          PROVIDER="${{ inputs.ai-provider }}"
+          MODEL="${{ inputs.ai-model }}"
+
+          if [ -z "$MODEL" ]; then
+            case "$PROVIDER" in
+              claude) MODEL="claude-opus-4-5-20251101" ;;
+              openai) MODEL="gpt-4.1-2025-04-14" ;;
+              gemini) MODEL="gemini-2.5-pro-preview-05-06" ;;
+            esac
+          fi
+
+          echo "model=$MODEL" >> $GITHUB_OUTPUT
+
+  # Claude OpenSpec review using official Anthropic GitHub Action
+  review-claude:
+    name: Claude OpenSpec Review (Official Action)
+    if: inputs.ai-provider == 'claude'
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Identify changed openspec files and load skill
+        id: context
+        run: |
+          OPENSPEC_PATH="${{ inputs.openspec-path }}"
+
+          # Load openspec reviewer skill if available
+          SKILL_PATH=".agents/skills/openspec-reviewer.md"
+          if [ -f "$SKILL_PATH" ]; then
+            echo "has_skill=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_skill=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Get list of changed openspec files in this PR
+          if [ -n "${{ github.event.pull_request.base.sha }}" ]; then
+            CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..HEAD -- "$OPENSPEC_PATH" | tr '\n' ' ')
+          else
+            CHANGED=$(find "$OPENSPEC_PATH" -type f -name "*.md" | tr '\n' ' ')
+          fi
+
+          echo "changed_files=$CHANGED" >> $GITHUB_OUTPUT
+
+          # List all openspec directories
+          SPECS=""
+          if [ -d "$OPENSPEC_PATH" ]; then
+            for spec_dir in "$OPENSPEC_PATH"*/; do
+              if [ -d "$spec_dir" ]; then
+                SPECS="$SPECS $(basename "$spec_dir")"
+              fi
+            done
+          fi
+          echo "spec_dirs=$SPECS" >> $GITHUB_OUTPUT
+
+      - name: Run Claude OpenSpec Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            ${{ steps.context.outputs.has_skill == 'true' && '# Agent Skill: OpenSpec Reviewer
+
+            Read the skill definition in .agents/skills/openspec-reviewer.md for detailed instructions on how to review OpenSpec documents.' || 'You are a senior technical architect reviewing OpenSpec design documents.' }}
+
+            OpenSpec is a structured approach to documenting software changes with:
+            - **proposal.md**: Problem statement, proposed solution, alternatives considered
+            - **design.md**: Technical architecture, component design, API specifications
+            - **tasks.md**: Implementation tasks, acceptance criteria, progress tracking
+
+            Review depth: ${{ inputs.review-depth }}
+            OpenSpec path: ${{ inputs.openspec-path }}
+            Changed files: ${{ steps.context.outputs.changed_files }}
+            Spec directories: ${{ steps.context.outputs.spec_dirs }}
+
+            Use the Read tool to examine the OpenSpec files and provide:
+
+            ## 1. Document Completeness
+            ${{ inputs.check-completeness && 'Check each openspec directory for required files (proposal.md, design.md, tasks.md). Report missing documents.' || 'Skip completeness check.' }}
+
+            ## 2. Content Quality
+            For each document, evaluate:
+            - Clarity and readability
+            - Technical accuracy
+            - Sufficient detail for implementation
+            - Clear acceptance criteria
+
+            ## 3. Consistency Check
+            ${{ inputs.check-consistency && 'Verify consistency between proposal, design, and tasks. Flag contradictions or gaps.' || 'Skip consistency check.' }}
+
+            ## 4. Implementation Alignment
+            ${{ inputs.check-implementation && 'Compare the spec against existing code to identify:
+            - Features already implemented
+            - Deviations from the spec
+            - Missing implementations' || 'Skip implementation check.' }}
+
+            ## 5. Recommendations
+            Provide specific suggestions for improving the OpenSpec documents.
+
+            Format your response with clear markdown headers and actionable feedback.
+          claude_args: |
+            --model ${{ needs.validate-inputs.outputs.model }}
+            --max-tokens 6000
+
+  # OpenAI OpenSpec review using official SDK
+  review-openai:
+    name: OpenAI OpenSpec Review (SDK)
+    if: inputs.ai-provider == 'openai'
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: '20'
+
+      - name: Install OpenAI SDK
+        run: |
+          npm init -y
+          npm install openai
+
+      - name: Gather openspec content
+        id: gather
+        run: |
+          OPENSPEC_PATH="${{ inputs.openspec-path }}"
+          echo "" > openspec_content.txt
+
+          if [ -d "$OPENSPEC_PATH" ]; then
+            for spec_dir in "$OPENSPEC_PATH"*/; do
+              if [ -d "$spec_dir" ]; then
+                SPEC_NAME=$(basename "$spec_dir")
+                echo -e "\n=== OpenSpec: $SPEC_NAME ===" >> openspec_content.txt
+
+                for doc in proposal.md design.md tasks.md; do
+                  if [ -f "${spec_dir}${doc}" ]; then
+                    echo -e "\n--- $doc ---" >> openspec_content.txt
+                    head -200 "${spec_dir}${doc}" >> openspec_content.txt
+                  else
+                    echo -e "\n--- $doc: MISSING ---" >> openspec_content.txt
+                  fi
+                done
+              fi
+            done
+          fi
+
+      - name: Review with OpenAI
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cat > review.mjs << 'EOF'
+          import OpenAI from 'openai';
+          import { readFileSync, writeFileSync } from 'fs';
+
+          const client = new OpenAI();
+          const model = process.env.MODEL;
+          const depth = process.env.DEPTH;
+          const checkCompleteness = process.env.CHECK_COMPLETENESS === 'true';
+          const checkConsistency = process.env.CHECK_CONSISTENCY === 'true';
+          const checkImplementation = process.env.CHECK_IMPLEMENTATION === 'true';
+
+          const content = readFileSync('openspec_content.txt', 'utf-8');
+
+          const response = await client.chat.completions.create({
+            model: model,
+            max_tokens: 4000,
+            messages: [
+              {
+                role: 'system',
+                content: `You are a senior technical architect reviewing OpenSpec design documents.
+
+          OpenSpec is a structured approach with:
+          - proposal.md: Problem statement, proposed solution
+          - design.md: Technical architecture, component design
+          - tasks.md: Implementation tasks, acceptance criteria`
+              },
+              {
+                role: 'user',
+                content: `Review these OpenSpec documents (depth: ${depth}).
+
+          ${content}
+
+          Provide:
+          ${checkCompleteness ? '1. Document Completeness - check for required files' : ''}
+          2. Content Quality - clarity, accuracy, detail
+          ${checkConsistency ? '3. Consistency - between proposal, design, tasks' : ''}
+          ${checkImplementation ? '4. Implementation notes - what may already exist' : ''}
+          5. Recommendations - specific improvements`
+              }
+            ]
+          });
+
+          writeFileSync('review.md', response.choices[0].message.content);
+          EOF
+
+          MODEL="${{ needs.validate-inputs.outputs.model }}" \
+          DEPTH="${{ inputs.review-depth }}" \
+          CHECK_COMPLETENESS="${{ inputs.check-completeness }}" \
+          CHECK_CONSISTENCY="${{ inputs.check-consistency }}" \
+          CHECK_IMPLEMENTATION="${{ inputs.check-implementation }}" \
+          node review.mjs
+
+      - name: Post review comment
+        if: inputs.post-comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          echo -e "## OpenSpec Review (OpenAI)\n" > comment.md
+          cat review.md >> comment.md
+          echo -e "\n---\n*Generated by AI OpenSpec Review workflow*" >> comment.md
+          gh pr comment "$PR_NUMBER" --body-file comment.md
+
+  # Gemini OpenSpec review using official SDK
+  review-gemini:
+    name: Gemini OpenSpec Review (SDK)
+    if: inputs.ai-provider == 'gemini'
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: '20'
+
+      - name: Install Google AI SDK
+        run: |
+          npm init -y
+          npm install @google/generative-ai
+
+      - name: Gather openspec content
+        run: |
+          OPENSPEC_PATH="${{ inputs.openspec-path }}"
+          echo "" > openspec_content.txt
+
+          if [ -d "$OPENSPEC_PATH" ]; then
+            for spec_dir in "$OPENSPEC_PATH"*/; do
+              if [ -d "$spec_dir" ]; then
+                SPEC_NAME=$(basename "$spec_dir")
+                echo -e "\n=== OpenSpec: $SPEC_NAME ===" >> openspec_content.txt
+
+                for doc in proposal.md design.md tasks.md; do
+                  if [ -f "${spec_dir}${doc}" ]; then
+                    echo -e "\n--- $doc ---" >> openspec_content.txt
+                    head -200 "${spec_dir}${doc}" >> openspec_content.txt
+                  else
+                    echo -e "\n--- $doc: MISSING ---" >> openspec_content.txt
+                  fi
+                done
+              fi
+            done
+          fi
+
+      - name: Review with Gemini
+        env:
+          GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
+        run: |
+          cat > review.mjs << 'EOF'
+          import { GoogleGenerativeAI } from '@google/generative-ai';
+          import { readFileSync, writeFileSync } from 'fs';
+
+          const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
+          const model = process.env.MODEL;
+          const depth = process.env.DEPTH;
+
+          const content = readFileSync('openspec_content.txt', 'utf-8');
+
+          const generativeModel = genAI.getGenerativeModel({ model: model });
+
+          const result = await generativeModel.generateContent(`
+          You are a senior technical architect reviewing OpenSpec design documents.
+
+          OpenSpec is a structured approach with:
+          - proposal.md: Problem statement, proposed solution
+          - design.md: Technical architecture, component design
+          - tasks.md: Implementation tasks, acceptance criteria
+
+          Review these OpenSpec documents (depth: ${depth}):
+
+          ${content}
+
+          Provide:
+          1. Document Completeness - check for required files
+          2. Content Quality - clarity, accuracy, detail
+          3. Consistency - between proposal, design, tasks
+          4. Recommendations - specific improvements`);
+
+          writeFileSync('review.md', result.response.text());
+          EOF
+
+          MODEL="${{ needs.validate-inputs.outputs.model }}" \
+          DEPTH="${{ inputs.review-depth }}" \
+          node review.mjs
+
+      - name: Post review comment
+        if: inputs.post-comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          echo -e "## OpenSpec Review (Gemini)\n" > comment.md
+          cat review.md >> comment.md
+          echo -e "\n---\n*Generated by AI OpenSpec Review workflow*" >> comment.md
+          gh pr comment "$PR_NUMBER" --body-file comment.md
