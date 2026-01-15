@@ -1,0 +1,112 @@
+# Reusable AI-Powered Security Review Workflow
+#
+# Performs automated security analysis on pull requests using Claude.
+# Uses official Anthropic claude-code-security-review action.
+#
+# Usage in your project's .github/workflows/security-review.yml:
+#
+# name: AI Security Review
+# on:
+#   pull_request:
+#     types: [opened, synchronize]
+# jobs:
+#   security:
+#     uses: artagon/artagon-workflows/.github/workflows/ai_security_review.yml@main
+#     secrets:
+#       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+name: AI Security Review
+
+on:
+  workflow_call:
+    inputs:
+      claude-model:
+        description: 'Claude model for security analysis'
+        required: false
+        type: string
+        default: 'claude-opus-4-1-20250805'
+      comment-pr:
+        description: 'Post findings as PR comments'
+        required: false
+        type: boolean
+        default: true
+      upload-results:
+        description: 'Upload results as artifact'
+        required: false
+        type: boolean
+        default: true
+      exclude-directories:
+        description: 'Directories to exclude (comma-separated)'
+        required: false
+        type: string
+        default: 'node_modules,vendor,dist,build,.git'
+      timeout-minutes:
+        description: 'Analysis timeout in minutes'
+        required: false
+        type: number
+        default: 20
+      run-every-commit:
+        description: 'Analyze all commits vs cached'
+        required: false
+        type: boolean
+        default: false
+      fail-on-findings:
+        description: 'Fail workflow if vulnerabilities found'
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: true
+    outputs:
+      findings-count:
+        description: 'Number of security findings'
+        value: ${{ jobs.security-review.outputs.findings-count }}
+
+jobs:
+  security-review:
+    name: Claude Security Review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      findings-count: ${{ steps.security.outputs.findings-count }}
+    steps:
+      - name: Checkout code
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 2
+
+      - name: Run Claude Security Review
+        id: security
+        # Official Anthropic Security Review Action
+        uses: anthropics/claude-code-security-review@main
+        with:
+          claude-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude-model: ${{ inputs.claude-model }}
+          comment-pr: ${{ inputs.comment-pr }}
+          upload-results: ${{ inputs.upload-results }}
+          exclude-directories: ${{ inputs.exclude-directories }}
+          claudecode-timeout: ${{ inputs.timeout-minutes }}
+          run-every-commit: ${{ inputs.run-every-commit }}
+
+      - name: Check findings
+        if: inputs.fail-on-findings
+        run: |
+          FINDINGS="${{ steps.security.outputs.findings-count }}"
+          if [ "$FINDINGS" -gt 0 ]; then
+            echo "Security review found $FINDINGS vulnerabilities"
+            exit 1
+          fi
+          echo "No security vulnerabilities found"
+
+      - name: Summary
+        run: |
+          echo "## Security Review Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Findings**: ${{ steps.security.outputs.findings-count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Model**: ${{ inputs.claude-model }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Results file**: ${{ steps.security.outputs.results-file }}" >> $GITHUB_STEP_SUMMARY

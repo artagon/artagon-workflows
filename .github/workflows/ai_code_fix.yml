@@ -1,0 +1,435 @@
+# Reusable AI-Powered Code Fix Workflow
+#
+# Automatically fixes code issues using AI (linting, security, style).
+# Uses official Anthropic GitHub Action for Claude, SDKs for others.
+#
+# Usage in your project's .github/workflows/ai-fix.yml:
+#
+# name: AI Code Fix
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       fix-type:
+#         description: 'Type of fix'
+#         required: true
+#         type: choice
+#         options: [lint, security, style, all]
+# jobs:
+#   fix:
+#     uses: artagon/artagon-workflows/.github/workflows/ai_code_fix.yml@main
+#     with:
+#       ai-provider: 'claude'
+#       fix-type: ${{ inputs.fix-type }}
+#     secrets:
+#       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+name: AI Code Fix
+
+on:
+  workflow_call:
+    inputs:
+      ai-provider:
+        description: 'AI provider (claude, openai, gemini)'
+        required: false
+        type: string
+        default: 'claude'
+      ai-model:
+        description: 'Specific model to use'
+        required: false
+        type: string
+        default: ''
+      fix-type:
+        description: 'Type of fix (lint, security, style, tests, all)'
+        required: true
+        type: string
+      target-files:
+        description: 'Glob pattern for files to analyze'
+        required: false
+        type: string
+        default: 'src/**/*.{js,ts,py,rs,go,java}'
+      create-pr:
+        description: 'Create PR with fixes'
+        required: false
+        type: boolean
+        default: true
+      dry-run:
+        description: 'Show fixes without applying'
+        required: false
+        type: boolean
+        default: false
+      commit-message:
+        description: 'Custom commit message prefix'
+        required: false
+        type: string
+        default: 'fix: apply AI-suggested'
+      max-files:
+        description: 'Maximum files to process'
+        required: false
+        type: number
+        default: 10
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: false
+      OPENAI_API_KEY:
+        required: false
+      GOOGLE_AI_API_KEY:
+        required: false
+
+jobs:
+  validate-inputs:
+    name: Validate Inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      model: ${{ steps.set-model.outputs.model }}
+    steps:
+      - name: Validate inputs
+        run: |
+          set -euo pipefail
+
+          PROVIDER="${{ inputs.ai-provider }}"
+          if ! echo "$PROVIDER" | grep -qE '^(claude|openai|gemini)$'; then
+            echo "Invalid provider: $PROVIDER"
+            exit 1
+          fi
+
+          FIX_TYPE="${{ inputs.fix-type }}"
+          if ! echo "$FIX_TYPE" | grep -qE '^(lint|security|style|tests|all)$'; then
+            echo "Invalid fix-type: $FIX_TYPE"
+            exit 1
+          fi
+
+      - name: Set model
+        id: set-model
+        run: |
+          PROVIDER="${{ inputs.ai-provider }}"
+          MODEL="${{ inputs.ai-model }}"
+
+          if [ -z "$MODEL" ]; then
+            case "$PROVIDER" in
+              claude) MODEL="claude-opus-4-5-20251101" ;;
+              openai) MODEL="gpt-4.1-2025-04-14" ;;
+              gemini) MODEL="gemini-2.5-pro-preview-05-06" ;;
+            esac
+          fi
+
+          echo "model=$MODEL" >> $GITHUB_OUTPUT
+
+  # Claude code fix using official Anthropic GitHub Action
+  fix-claude:
+    name: Claude Code Fix (Official Action)
+    if: inputs.ai-provider == 'claude'
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Run Claude Code Fix
+        # Official Anthropic GitHub Action
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are a code fixer. Analyze this repository and fix ${{ inputs.fix-type }} issues.
+
+            Target files pattern: ${{ inputs.target-files }}
+            Maximum files to process: ${{ inputs.max-files }}
+            Dry run mode: ${{ inputs.dry-run }}
+
+            For each file that needs fixes:
+            1. Identify the specific issues
+            2. Provide the corrected code
+            3. Explain what was changed and why
+
+            Focus on:
+            ${{ inputs.fix-type == 'lint' && '- Code style violations\n- Formatting issues\n- Naming conventions' || '' }}
+            ${{ inputs.fix-type == 'security' && '- Security vulnerabilities\n- Input validation\n- Authentication/authorization issues' || '' }}
+            ${{ inputs.fix-type == 'style' && '- Code readability\n- Best practices\n- Documentation' || '' }}
+            ${{ inputs.fix-type == 'all' && '- All of the above categories' || '' }}
+
+            ${{ inputs.dry-run && 'Only report what would be fixed, do not make changes.' || 'Please implement the fixes.' }}
+          claude_args: |
+            --model ${{ needs.validate-inputs.outputs.model }}
+            --max-tokens 8000
+
+      - name: Create PR
+        if: inputs.create-pr && inputs.dry-run == false
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          FIX_TYPE="${{ inputs.fix-type }}"
+          BRANCH="ai-fix/$FIX_TYPE-$(date +%Y%m%d-%H%M%S)"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "${{ inputs.commit-message }} $FIX_TYPE issues
+
+          Applied AI-suggested fixes using Claude.
+
+          Generated by AI Code Fix workflow"
+
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "${{ inputs.commit-message }} $FIX_TYPE issues" \
+            --body "## AI Code Fix (Claude)
+
+          Applied AI-suggested fixes for **$FIX_TYPE** issues.
+
+          ---
+          *Generated by AI Code Fix workflow*" \
+            --base main \
+            --head "$BRANCH"
+
+  # OpenAI code fix using official SDK
+  fix-openai:
+    name: OpenAI Code Fix (SDK)
+    if: inputs.ai-provider == 'openai'
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: '20'
+
+      - name: Install OpenAI SDK
+        run: |
+          npm init -y
+          npm install openai
+
+      - name: Find target files
+        id: find-files
+        run: |
+          MAX_FILES="${{ inputs.max-files }}"
+          find . -type f \( -name "*.js" -o -name "*.ts" -o -name "*.py" -o -name "*.rs" -o -name "*.go" -o -name "*.java" \) \
+            ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/target/*" ! -path "*/build/*" \
+            | head -n "$MAX_FILES" > files_to_fix.txt
+          echo "file_count=$(wc -l < files_to_fix.txt)" >> $GITHUB_OUTPUT
+
+      - name: Generate fixes with OpenAI
+        if: steps.find-files.outputs.file_count != '0'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cat > fix.mjs << 'EOF'
+          import OpenAI from 'openai';
+          import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+
+          const client = new OpenAI();
+          const model = process.env.MODEL;
+          const fixType = process.env.FIX_TYPE;
+          const dryRun = process.env.DRY_RUN === 'true';
+
+          if (!existsSync('fixes')) mkdirSync('fixes');
+
+          const files = readFileSync('files_to_fix.txt', 'utf-8').split('\n').filter(f => f.trim());
+
+          for (const file of files) {
+            if (!file || !existsSync(file)) continue;
+
+            const content = readFileSync(file, 'utf-8').split('\n').slice(0, 500).join('\n');
+            console.log(`Processing: ${file}`);
+
+            const response = await client.chat.completions.create({
+              model: model,
+              max_tokens: 4000,
+              response_format: { type: 'json_object' },
+              messages: [
+                { role: 'system', content: 'Fix code issues. Respond with JSON: {has_fixes: boolean, fixed_content: string, changes: string[]}' },
+                { role: 'user', content: `Fix ${fixType} issues in ${file}:\n\`\`\`\n${content}\n\`\`\`` }
+              ]
+            });
+
+            const result = JSON.parse(response.choices[0].message.content);
+            writeFileSync(`fixes/${file.replace(/\//g, '_')}.json`, JSON.stringify(result, null, 2));
+
+            if (!dryRun && result.has_fixes && result.fixed_content) {
+              writeFileSync(file, result.fixed_content);
+              console.log(`Applied fixes to: ${file}`);
+            }
+          }
+          EOF
+
+          MODEL="${{ needs.validate-inputs.outputs.model }}" \
+          FIX_TYPE="${{ inputs.fix-type }}" \
+          DRY_RUN="${{ inputs.dry-run }}" \
+          node fix.mjs
+
+      - name: Create PR
+        if: inputs.create-pr && inputs.dry-run == false
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          FIX_TYPE="${{ inputs.fix-type }}"
+          BRANCH="ai-fix/$FIX_TYPE-$(date +%Y%m%d-%H%M%S)"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "${{ inputs.commit-message }} $FIX_TYPE issues
+
+          Applied AI-suggested fixes using OpenAI.
+
+          Generated by AI Code Fix workflow"
+
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "${{ inputs.commit-message }} $FIX_TYPE issues" \
+            --body "## AI Code Fix (OpenAI)
+
+          Applied AI-suggested fixes for **$FIX_TYPE** issues.
+
+          ---
+          *Generated by AI Code Fix workflow*" \
+            --base main \
+            --head "$BRANCH"
+
+  # Gemini code fix using official SDK
+  fix-gemini:
+    name: Gemini Code Fix (SDK)
+    if: inputs.ai-provider == 'gemini'
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: '20'
+
+      - name: Install Google AI SDK
+        run: |
+          npm init -y
+          npm install @google/generative-ai
+
+      - name: Find target files
+        id: find-files
+        run: |
+          MAX_FILES="${{ inputs.max-files }}"
+          find . -type f \( -name "*.js" -o -name "*.ts" -o -name "*.py" -o -name "*.rs" -o -name "*.go" -o -name "*.java" \) \
+            ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/target/*" ! -path "*/build/*" \
+            | head -n "$MAX_FILES" > files_to_fix.txt
+          echo "file_count=$(wc -l < files_to_fix.txt)" >> $GITHUB_OUTPUT
+
+      - name: Generate fixes with Gemini
+        if: steps.find-files.outputs.file_count != '0'
+        env:
+          GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
+        run: |
+          cat > fix.mjs << 'EOF'
+          import { GoogleGenerativeAI } from '@google/generative-ai';
+          import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+
+          const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
+          const model = process.env.MODEL;
+          const fixType = process.env.FIX_TYPE;
+          const dryRun = process.env.DRY_RUN === 'true';
+
+          if (!existsSync('fixes')) mkdirSync('fixes');
+
+          const files = readFileSync('files_to_fix.txt', 'utf-8').split('\n').filter(f => f.trim());
+          const generativeModel = genAI.getGenerativeModel({
+            model: model,
+            generationConfig: { responseMimeType: 'application/json' }
+          });
+
+          for (const file of files) {
+            if (!file || !existsSync(file)) continue;
+
+            const content = readFileSync(file, 'utf-8').split('\n').slice(0, 500).join('\n');
+            console.log(`Processing: ${file}`);
+
+            const result = await generativeModel.generateContent(
+              `Fix ${fixType} issues in ${file}. Respond JSON: {has_fixes, fixed_content, changes}\n\`\`\`\n${content}\n\`\`\``
+            );
+
+            const parsed = JSON.parse(result.response.text());
+            writeFileSync(`fixes/${file.replace(/\//g, '_')}.json`, JSON.stringify(parsed, null, 2));
+
+            if (!dryRun && parsed.has_fixes && parsed.fixed_content) {
+              writeFileSync(file, parsed.fixed_content);
+              console.log(`Applied fixes to: ${file}`);
+            }
+          }
+          EOF
+
+          MODEL="${{ needs.validate-inputs.outputs.model }}" \
+          FIX_TYPE="${{ inputs.fix-type }}" \
+          DRY_RUN="${{ inputs.dry-run }}" \
+          node fix.mjs
+
+      - name: Create PR
+        if: inputs.create-pr && inputs.dry-run == false
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          FIX_TYPE="${{ inputs.fix-type }}"
+          BRANCH="ai-fix/$FIX_TYPE-$(date +%Y%m%d-%H%M%S)"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "${{ inputs.commit-message }} $FIX_TYPE issues
+
+          Applied AI-suggested fixes using Gemini.
+
+          Generated by AI Code Fix workflow"
+
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "${{ inputs.commit-message }} $FIX_TYPE issues" \
+            --body "## AI Code Fix (Gemini)
+
+          Applied AI-suggested fixes for **$FIX_TYPE** issues.
+
+          ---
+          *Generated by AI Code Fix workflow*" \
+            --base main \
+            --head "$BRANCH"

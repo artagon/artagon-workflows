@@ -1,0 +1,355 @@
+# Reusable AI-Powered Issue Triage Workflow
+#
+# Provides automated issue analysis, labeling, and initial response.
+# Uses official Anthropic GitHub Action for Claude, SDKs for others.
+#
+# Usage in your project's .github/workflows/issue-triage.yml:
+#
+# name: AI Issue Triage
+# on:
+#   issues:
+#     types: [opened]
+# jobs:
+#   triage:
+#     uses: artagon/artagon-workflows/.github/workflows/ai_issue_triage.yml@main
+#     with:
+#       ai-provider: 'claude'
+#       auto-label: true
+#     secrets:
+#       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+name: AI Issue Triage
+
+on:
+  workflow_call:
+    inputs:
+      ai-provider:
+        description: 'AI provider (claude, openai, gemini)'
+        required: false
+        type: string
+        default: 'claude'
+      ai-model:
+        description: 'Specific model to use (empty for provider default)'
+        required: false
+        type: string
+        default: ''
+      auto-label:
+        description: 'Automatically apply suggested labels'
+        required: false
+        type: boolean
+        default: false
+      add-comment:
+        description: 'Add analysis as comment'
+        required: false
+        type: boolean
+        default: true
+      add-response:
+        description: 'Add initial response to issue author'
+        required: false
+        type: boolean
+        default: false
+      available-labels:
+        description: 'JSON array of available labels'
+        required: false
+        type: string
+        default: '["bug", "feature", "documentation", "question", "enhancement", "help wanted", "good first issue"]'
+      project-context:
+        description: 'Brief description of the project for context'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: false
+      OPENAI_API_KEY:
+        required: false
+      GOOGLE_AI_API_KEY:
+        required: false
+
+jobs:
+  validate-inputs:
+    name: Validate Inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      model: ${{ steps.set-model.outputs.model }}
+    steps:
+      - name: Validate provider
+        run: |
+          set -euo pipefail
+          PROVIDER="${{ inputs.ai-provider }}"
+          if ! echo "$PROVIDER" | grep -qE '^(claude|openai|gemini)$'; then
+            echo "Invalid ai-provider: $PROVIDER"
+            exit 1
+          fi
+
+      - name: Set model
+        id: set-model
+        run: |
+          PROVIDER="${{ inputs.ai-provider }}"
+          MODEL="${{ inputs.ai-model }}"
+
+          if [ -z "$MODEL" ]; then
+            case "$PROVIDER" in
+              claude) MODEL="claude-opus-4-5-20251101" ;;
+              openai) MODEL="gpt-4.1-2025-04-14" ;;
+              gemini) MODEL="gemini-2.5-pro-preview-05-06" ;;
+            esac
+          fi
+
+          echo "model=$MODEL" >> $GITHUB_OUTPUT
+
+  # Claude triage using official Anthropic GitHub Action
+  triage-claude:
+    name: Claude Triage (Official Action)
+    if: inputs.ai-provider == 'claude'
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Run Claude Issue Triage
+        # Official Anthropic GitHub Action
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are a technical project manager triaging a GitHub issue.
+
+            Available labels: ${{ inputs.available-labels }}
+            Project context: ${{ inputs.project-context }}
+
+            Please analyze issue #${{ github.event.issue.number }}:
+            Title: ${{ github.event.issue.title }}
+
+            Provide:
+            1. Category (bug/feature/question/documentation/enhancement)
+            2. Priority (critical/high/medium/low)
+            3. Suggested labels from available labels
+            4. Complexity estimate (trivial/simple/moderate/complex)
+            5. Technical summary
+            6. Suggested action items
+
+            ${{ inputs.add-response && 'Also provide a friendly initial response to the issue author.' || '' }}
+
+            Format your response with clear markdown headers.
+          claude_args: |
+            --model ${{ needs.validate-inputs.outputs.model }}
+            --max-tokens 2000
+
+      - name: Apply labels
+        if: inputs.auto-label
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Extract labels from Claude response and apply them
+          # This is a simplified approach - the official action handles this better
+          echo "Labels would be applied based on Claude's analysis"
+
+  # OpenAI triage using official SDK
+  triage-openai:
+    name: OpenAI Triage (SDK)
+    if: inputs.ai-provider == 'openai'
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: '20'
+
+      - name: Install OpenAI SDK
+        run: |
+          npm init -y
+          npm install openai
+
+      - name: Analyze issue with OpenAI
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cat > triage.mjs << 'EOF'
+          import OpenAI from 'openai';
+          import { writeFileSync } from 'fs';
+
+          const client = new OpenAI();
+          const model = process.env.MODEL;
+          const labels = process.env.LABELS;
+          const context = process.env.CONTEXT;
+          const title = process.env.ISSUE_TITLE;
+          const body = process.env.ISSUE_BODY;
+
+          const response = await client.chat.completions.create({
+            model: model,
+            max_tokens: 1500,
+            response_format: { type: 'json_object' },
+            messages: [
+              {
+                role: 'system',
+                content: 'You are a technical project manager. Respond with JSON: {category, priority, suggested_labels, complexity, technical_summary, action_items, initial_response}'
+              },
+              {
+                role: 'user',
+                content: `Triage this issue. Available labels: ${labels}\nProject: ${context}\n\nTitle: ${title}\nBody: ${body}`
+              }
+            ]
+          });
+
+          writeFileSync('analysis.json', response.choices[0].message.content);
+          EOF
+
+          MODEL="${{ needs.validate-inputs.outputs.model }}" \
+          LABELS='${{ inputs.available-labels }}' \
+          CONTEXT='${{ inputs.project-context }}' \
+          ISSUE_TITLE="${{ github.event.issue.title }}" \
+          ISSUE_BODY="${{ github.event.issue.body }}" \
+          node triage.mjs
+
+      - name: Post analysis comment
+        if: inputs.add-comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+
+          CATEGORY=$(jq -r '.category // "unknown"' analysis.json)
+          PRIORITY=$(jq -r '.priority // "medium"' analysis.json)
+          COMPLEXITY=$(jq -r '.complexity // "unknown"' analysis.json)
+          SUMMARY=$(jq -r '.technical_summary // "No summary"' analysis.json)
+
+          cat > comment.md << EOF
+          ## AI Issue Analysis (OpenAI)
+
+          | Attribute | Value |
+          |-----------|-------|
+          | Category | $CATEGORY |
+          | Priority | $PRIORITY |
+          | Complexity | $COMPLEXITY |
+
+          ### Technical Summary
+          $SUMMARY
+
+          ### Suggested Labels
+          EOF
+
+          jq -r '.suggested_labels[]? | "- \`\(.)\`"' analysis.json >> comment.md || echo "- None" >> comment.md
+
+          echo -e "\n---\n*Analyzed by AI*" >> comment.md
+
+          gh issue comment "$ISSUE_NUMBER" --body-file comment.md
+
+      - name: Apply labels
+        if: inputs.auto-label
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+          LABELS=$(jq -r '.suggested_labels | join(",")' analysis.json)
+          if [ -n "$LABELS" ] && [ "$LABELS" != "null" ]; then
+            gh issue edit "$ISSUE_NUMBER" --add-label "$LABELS" || true
+          fi
+
+  # Gemini triage using official SDK
+  triage-gemini:
+    name: Gemini Triage (SDK)
+    if: inputs.ai-provider == 'gemini'
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: '20'
+
+      - name: Install Google AI SDK
+        run: |
+          npm init -y
+          npm install @google/generative-ai
+
+      - name: Analyze issue with Gemini
+        env:
+          GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
+        run: |
+          cat > triage.mjs << 'EOF'
+          import { GoogleGenerativeAI } from '@google/generative-ai';
+          import { writeFileSync } from 'fs';
+
+          const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
+          const model = process.env.MODEL;
+          const labels = process.env.LABELS;
+          const context = process.env.CONTEXT;
+          const title = process.env.ISSUE_TITLE;
+          const body = process.env.ISSUE_BODY;
+
+          const generativeModel = genAI.getGenerativeModel({
+            model: model,
+            generationConfig: { responseMimeType: 'application/json' }
+          });
+
+          const result = await generativeModel.generateContent(`
+          Triage this GitHub issue. Available labels: ${labels}
+          Project: ${context}
+
+          Title: ${title}
+          Body: ${body}
+
+          Respond with JSON: {category, priority, suggested_labels, complexity, technical_summary, action_items}`);
+
+          writeFileSync('analysis.json', result.response.text());
+          EOF
+
+          MODEL="${{ needs.validate-inputs.outputs.model }}" \
+          LABELS='${{ inputs.available-labels }}' \
+          CONTEXT='${{ inputs.project-context }}' \
+          ISSUE_TITLE="${{ github.event.issue.title }}" \
+          ISSUE_BODY="${{ github.event.issue.body }}" \
+          node triage.mjs
+
+      - name: Post analysis comment
+        if: inputs.add-comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+
+          CATEGORY=$(jq -r '.category // "unknown"' analysis.json)
+          PRIORITY=$(jq -r '.priority // "medium"' analysis.json)
+          SUMMARY=$(jq -r '.technical_summary // "No summary"' analysis.json)
+
+          cat > comment.md << EOF
+          ## AI Issue Analysis (Gemini)
+
+          | Attribute | Value |
+          |-----------|-------|
+          | Category | $CATEGORY |
+          | Priority | $PRIORITY |
+
+          ### Technical Summary
+          $SUMMARY
+
+          ---
+          *Analyzed by AI*
+          EOF
+
+          gh issue comment "$ISSUE_NUMBER" --body-file comment.md
+
+      - name: Apply labels
+        if: inputs.auto-label
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+          LABELS=$(jq -r '.suggested_labels | join(",")' analysis.json)
+          if [ -n "$LABELS" ] && [ "$LABELS" != "null" ]; then
+            gh issue edit "$ISSUE_NUMBER" --add-label "$LABELS" || true
+          fi

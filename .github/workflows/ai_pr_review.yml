@@ -1,0 +1,355 @@
+# Reusable AI-Powered PR Review Workflow
+#
+# Provides automated code review using Claude, GPT-4, or Gemini.
+# Uses official Anthropic GitHub Action for Claude, SDKs for others.
+#
+# Usage in your project's .github/workflows/pr-review.yml:
+#
+# name: AI PR Review
+# on:
+#   pull_request:
+#     types: [opened, synchronize]
+# jobs:
+#   review:
+#     uses: artagon/artagon-workflows/.github/workflows/ai_pr_review.yml@main
+#     with:
+#       ai-provider: 'claude'
+#       review-depth: 'standard'
+#     secrets:
+#       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+name: AI PR Review
+
+on:
+  workflow_call:
+    inputs:
+      ai-provider:
+        description: 'AI provider (claude, openai, gemini)'
+        required: false
+        type: string
+        default: 'claude'
+      ai-model:
+        description: 'Specific model to use (empty for provider default)'
+        required: false
+        type: string
+        default: ''
+      review-depth:
+        description: 'Review depth (quick, standard, thorough)'
+        required: false
+        type: string
+        default: 'standard'
+      focus-areas:
+        description: 'Comma-separated focus areas (security, performance, style, logic, all)'
+        required: false
+        type: string
+        default: 'security,logic'
+      post-summary:
+        description: 'Post summary as PR comment'
+        required: false
+        type: boolean
+        default: true
+      fail-on-critical:
+        description: 'Fail workflow if critical issues found'
+        required: false
+        type: boolean
+        default: false
+      exclude-patterns:
+        description: 'File patterns to exclude from review'
+        required: false
+        type: string
+        default: '*.lock,*.sum,package-lock.json,yarn.lock'
+      max-files:
+        description: 'Maximum files to review (0 for unlimited)'
+        required: false
+        type: number
+        default: 20
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: false
+      OPENAI_API_KEY:
+        required: false
+      GOOGLE_AI_API_KEY:
+        required: false
+
+jobs:
+  validate-inputs:
+    name: Validate Inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      model: ${{ steps.set-model.outputs.model }}
+    steps:
+      - name: Validate provider
+        run: |
+          set -euo pipefail
+
+          PROVIDER="${{ inputs.ai-provider }}"
+          if ! echo "$PROVIDER" | grep -qE '^(claude|openai|gemini)$'; then
+            echo "Invalid ai-provider: $PROVIDER"
+            echo "Allowed values: claude, openai, gemini"
+            exit 1
+          fi
+
+          DEPTH="${{ inputs.review-depth }}"
+          if ! echo "$DEPTH" | grep -qE '^(quick|standard|thorough)$'; then
+            echo "Invalid review-depth: $DEPTH"
+            exit 1
+          fi
+
+          echo "Input validation passed"
+
+      - name: Set model
+        id: set-model
+        run: |
+          PROVIDER="${{ inputs.ai-provider }}"
+          MODEL="${{ inputs.ai-model }}"
+
+          if [ -z "$MODEL" ]; then
+            case "$PROVIDER" in
+              claude) MODEL="claude-opus-4-5-20251101" ;;
+              openai) MODEL="gpt-4.1-2025-04-14" ;;
+              gemini) MODEL="gemini-2.5-pro-preview-05-06" ;;
+            esac
+          fi
+
+          echo "model=$MODEL" >> $GITHUB_OUTPUT
+
+  # Claude review using official Anthropic GitHub Action
+  review-claude:
+    name: Claude Review (Official Action)
+    if: inputs.ai-provider == 'claude'
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Run Claude Code Review
+        # Official Anthropic GitHub Action
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are a senior code reviewer performing a pull request review.
+
+            Review depth: ${{ inputs.review-depth }}
+            Focus areas: ${{ inputs.focus-areas }}
+
+            Please review this pull request and provide:
+            1. A brief summary of the changes
+            2. Code quality score (0-100)
+            3. List of issues found with severity (critical/high/medium/low)
+            4. Positive aspects of the code
+            5. Suggestions for improvement
+
+            Focus especially on: ${{ inputs.focus-areas }}
+
+            Format your response clearly with markdown headers.
+          claude_args: |
+            --model ${{ needs.validate-inputs.outputs.model }}
+            --max-tokens 4000
+
+  # OpenAI review using official SDK
+  review-openai:
+    name: OpenAI Review (SDK)
+    if: inputs.ai-provider == 'openai'
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: '20'
+
+      - name: Install OpenAI SDK
+        run: |
+          npm init -y
+          npm install openai
+
+      - name: Get PR diff
+        id: get-diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          gh pr diff "$PR_NUMBER" > pr_diff.txt || true
+          gh pr view "$PR_NUMBER" --json title,body --jq '{title: .title, body: .body}' > pr_info.json
+
+          DIFF_LINES=$(wc -l < pr_diff.txt)
+          if [ "$DIFF_LINES" -gt 3000 ]; then
+            head -3000 pr_diff.txt > pr_diff_truncated.txt
+            mv pr_diff_truncated.txt pr_diff.txt
+          fi
+
+      - name: Review with OpenAI
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cat > review_openai.mjs << 'EOF'
+          import OpenAI from 'openai';
+          import { readFileSync, writeFileSync } from 'fs';
+
+          const client = new OpenAI();
+          const model = process.env.MODEL;
+          const depth = process.env.DEPTH;
+          const focus = process.env.FOCUS;
+
+          const prInfo = JSON.parse(readFileSync('pr_info.json', 'utf-8'));
+          const diff = readFileSync('pr_diff.txt', 'utf-8');
+
+          const response = await client.chat.completions.create({
+            model: model,
+            max_tokens: 4000,
+            messages: [
+              {
+                role: 'system',
+                content: 'You are a senior code reviewer. Provide thorough, constructive feedback.'
+              },
+              {
+                role: 'user',
+                content: `Review this PR (depth: ${depth}, focus: ${focus}).
+
+          Title: ${prInfo.title}
+
+          Diff:
+          \`\`\`diff
+          ${diff}
+          \`\`\`
+
+          Provide:
+          1. Summary
+          2. Score (0-100)
+          3. Issues (with severity)
+          4. Positive aspects
+          5. Suggestions`
+              }
+            ]
+          });
+
+          writeFileSync('review.md', response.choices[0].message.content);
+          EOF
+
+          MODEL="${{ needs.validate-inputs.outputs.model }}" \
+          DEPTH="${{ inputs.review-depth }}" \
+          FOCUS="${{ inputs.focus-areas }}" \
+          node review_openai.mjs
+
+      - name: Post review comment
+        if: inputs.post-summary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          echo -e "## AI Code Review (OpenAI)\n" > comment.md
+          cat review.md >> comment.md
+          echo -e "\n---\n*Generated by AI PR Review workflow*" >> comment.md
+          gh pr comment "$PR_NUMBER" --body-file comment.md
+
+  # Gemini review using official SDK
+  review-gemini:
+    name: Gemini Review (SDK)
+    if: inputs.ai-provider == 'gemini'
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: '20'
+
+      - name: Install Google AI SDK
+        run: |
+          npm init -y
+          npm install @google/generative-ai
+
+      - name: Get PR diff
+        id: get-diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          gh pr diff "$PR_NUMBER" > pr_diff.txt || true
+          gh pr view "$PR_NUMBER" --json title,body --jq '{title: .title, body: .body}' > pr_info.json
+
+          DIFF_LINES=$(wc -l < pr_diff.txt)
+          if [ "$DIFF_LINES" -gt 3000 ]; then
+            head -3000 pr_diff.txt > pr_diff_truncated.txt
+            mv pr_diff_truncated.txt pr_diff.txt
+          fi
+
+      - name: Review with Gemini
+        env:
+          GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
+        run: |
+          cat > review_gemini.mjs << 'EOF'
+          import { GoogleGenerativeAI } from '@google/generative-ai';
+          import { readFileSync, writeFileSync } from 'fs';
+
+          const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
+          const model = process.env.MODEL;
+          const depth = process.env.DEPTH;
+          const focus = process.env.FOCUS;
+
+          const prInfo = JSON.parse(readFileSync('pr_info.json', 'utf-8'));
+          const diff = readFileSync('pr_diff.txt', 'utf-8');
+
+          const generativeModel = genAI.getGenerativeModel({ model: model });
+
+          const result = await generativeModel.generateContent(`
+          You are a senior code reviewer. Review this PR (depth: ${depth}, focus: ${focus}).
+
+          Title: ${prInfo.title}
+
+          Diff:
+          \`\`\`diff
+          ${diff}
+          \`\`\`
+
+          Provide:
+          1. Summary
+          2. Score (0-100)
+          3. Issues (with severity)
+          4. Positive aspects
+          5. Suggestions`);
+
+          writeFileSync('review.md', result.response.text());
+          EOF
+
+          MODEL="${{ needs.validate-inputs.outputs.model }}" \
+          DEPTH="${{ inputs.review-depth }}" \
+          FOCUS="${{ inputs.focus-areas }}" \
+          node review_gemini.mjs
+
+      - name: Post review comment
+        if: inputs.post-summary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          echo -e "## AI Code Review (Gemini)\n" > comment.md
+          cat review.md >> comment.md
+          echo -e "\n---\n*Generated by AI PR Review workflow*" >> comment.md
+          gh pr comment "$PR_NUMBER" --body-file comment.md

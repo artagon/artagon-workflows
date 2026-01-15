@@ -1,0 +1,593 @@
+# Reusable AI-Powered Documentation Generator Workflow
+#
+# Generates documentation (README, API docs, changelogs) using AI.
+#
+# Usage in your project's .github/workflows/doc-gen.yml:
+#
+# name: AI Doc Generator
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       doc-type:
+#         description: 'Type of documentation'
+#         required: true
+#         type: choice
+#         options: [readme, api, changelog, all]
+# jobs:
+#   generate:
+#     uses: artagon/artagon-workflows/.github/workflows/ai_doc_gen.yml@main
+#     with:
+#       ai-provider: 'claude'
+#       doc-type: ${{ inputs.doc-type }}
+#     secrets:
+#       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+name: AI Documentation Generator
+
+on:
+  workflow_call:
+    inputs:
+      ai-provider:
+        description: 'AI provider (claude, openai, gemini)'
+        required: false
+        type: string
+        default: 'claude'
+      ai-model:
+        description: 'Specific model to use'
+        required: false
+        type: string
+        default: ''
+      doc-type:
+        description: 'Documentation type (readme, api, changelog, all)'
+        required: true
+        type: string
+      source-files:
+        description: 'Glob pattern for source files to document'
+        required: false
+        type: string
+        default: 'src/**/*.{js,ts,py,rs,go,java}'
+      output-dir:
+        description: 'Output directory for generated docs'
+        required: false
+        type: string
+        default: 'docs'
+      output-format:
+        description: 'Output format (markdown, rst)'
+        required: false
+        type: string
+        default: 'markdown'
+      create-pr:
+        description: 'Create PR with documentation'
+        required: false
+        type: boolean
+        default: true
+      dry-run:
+        description: 'Show generated docs without committing'
+        required: false
+        type: boolean
+        default: false
+      include-examples:
+        description: 'Include usage examples in docs'
+        required: false
+        type: boolean
+        default: true
+      project-name:
+        description: 'Project name for documentation'
+        required: false
+        type: string
+        default: ''
+      project-description:
+        description: 'Brief project description'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: false
+      OPENAI_API_KEY:
+        required: false
+      GOOGLE_AI_API_KEY:
+        required: false
+
+jobs:
+  validate-inputs:
+    name: Validate Inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      model: ${{ steps.set-model.outputs.model }}
+    steps:
+      - name: Validate inputs
+        run: |
+          set -euo pipefail
+
+          PROVIDER="${{ inputs.ai-provider }}"
+          if ! echo "$PROVIDER" | grep -qE '^(claude|openai|gemini)$'; then
+            echo "Invalid provider: $PROVIDER"
+            exit 1
+          fi
+
+          DOC_TYPE="${{ inputs.doc-type }}"
+          if ! echo "$DOC_TYPE" | grep -qE '^(readme|api|changelog|all)$'; then
+            echo "Invalid doc-type: $DOC_TYPE"
+            exit 1
+          fi
+
+          FORMAT="${{ inputs.output-format }}"
+          if ! echo "$FORMAT" | grep -qE '^(markdown|rst)$'; then
+            echo "Invalid output-format: $FORMAT"
+            exit 1
+          fi
+
+      - name: Set model
+        id: set-model
+        run: |
+          PROVIDER="${{ inputs.ai-provider }}"
+          MODEL="${{ inputs.ai-model }}"
+
+          if [ -z "$MODEL" ]; then
+            case "$PROVIDER" in
+              claude) MODEL="claude-opus-4-5-20251101" ;;
+              openai) MODEL="gpt-4.1-2025-04-14" ;;
+              gemini) MODEL="gemini-2.5-pro-preview-05-06" ;;
+            esac
+          fi
+
+          echo "model=$MODEL" >> $GITHUB_OUTPUT
+
+  generate-docs:
+    name: Generate Documentation
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Gather project context
+        id: context
+        run: |
+          set -euo pipefail
+
+          # Detect project name
+          PROJECT_NAME="${{ inputs.project-name }}"
+          if [ -z "$PROJECT_NAME" ]; then
+            PROJECT_NAME=$(basename "${{ github.repository }}")
+          fi
+          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+
+          # Detect project type and gather context
+          echo "Gathering project context..."
+
+          # Check for package files
+          if [ -f "package.json" ]; then
+            echo "project_type=node" >> $GITHUB_OUTPUT
+            jq '{name, version, description, scripts: .scripts | keys, dependencies: .dependencies | keys}' package.json > project_info.json 2>/dev/null || echo '{}' > project_info.json
+          elif [ -f "Cargo.toml" ]; then
+            echo "project_type=rust" >> $GITHUB_OUTPUT
+            echo '{"type": "rust"}' > project_info.json
+          elif [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
+            echo "project_type=python" >> $GITHUB_OUTPUT
+            echo '{"type": "python"}' > project_info.json
+          elif [ -f "go.mod" ]; then
+            echo "project_type=go" >> $GITHUB_OUTPUT
+            echo '{"type": "go"}' > project_info.json
+          elif [ -f "pom.xml" ] || [ -f "build.gradle" ]; then
+            echo "project_type=java" >> $GITHUB_OUTPUT
+            echo '{"type": "java"}' > project_info.json
+          else
+            echo "project_type=unknown" >> $GITHUB_OUTPUT
+            echo '{}' > project_info.json
+          fi
+
+          # Get file structure
+          find . -type f \( -name "*.js" -o -name "*.ts" -o -name "*.py" -o -name "*.rs" -o -name "*.go" -o -name "*.java" \) \
+            ! -path "*/node_modules/*" \
+            ! -path "*/.git/*" \
+            ! -path "*/target/*" \
+            ! -path "*/build/*" \
+            | head -50 > file_structure.txt
+
+      - name: Gather source files
+        id: sources
+        run: |
+          set -euo pipefail
+
+          # Find source files
+          find . -type f \( -name "*.js" -o -name "*.ts" -o -name "*.py" -o -name "*.rs" -o -name "*.go" -o -name "*.java" \) \
+            ! -path "*/node_modules/*" \
+            ! -path "*/.git/*" \
+            ! -path "*/target/*" \
+            ! -path "*/build/*" \
+            ! -path "*/dist/*" \
+            | head -20 > source_files.txt
+
+          FILE_COUNT=$(wc -l < source_files.txt)
+          echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
+
+          # Extract key content (first 100 lines of each file)
+          mkdir -p source_content
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            BASENAME=$(basename "$file")
+            head -100 "$file" > "source_content/$BASENAME.txt" 2>/dev/null || true
+          done < source_files.txt
+
+          # Combine for context
+          cat source_content/*.txt > combined_source.txt 2>/dev/null || echo "No source files found" > combined_source.txt
+
+      - name: Generate README with Claude
+        if: inputs.ai-provider == 'claude' && (inputs.doc-type == 'readme' || inputs.doc-type == 'all')
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          MODEL="${{ needs.validate-inputs.outputs.model }}"
+          PROJECT_NAME="${{ steps.context.outputs.project_name }}"
+          PROJECT_DESC="${{ inputs.project-description }}"
+          INCLUDE_EXAMPLES="${{ inputs.include-examples }}"
+
+          SOURCE_CONTENT=$(cat combined_source.txt | head -2000)
+          FILE_STRUCTURE=$(cat file_structure.txt)
+
+          jq -n \
+            --arg model "$MODEL" \
+            --arg name "$PROJECT_NAME" \
+            --arg desc "$PROJECT_DESC" \
+            --arg examples "$INCLUDE_EXAMPLES" \
+            --arg files "$FILE_STRUCTURE" \
+            --arg source "$SOURCE_CONTENT" \
+            '{
+              model: $model,
+              max_tokens: 4000,
+              messages: [{
+                role: "user",
+                content: ("Generate a comprehensive README.md for this project.\n\nProject: " + $name + "\nDescription: " + $desc + "\nInclude examples: " + $examples + "\n\nFile structure:\n" + $files + "\n\nSource code samples:\n```\n" + $source + "\n```\n\nGenerate a professional README with:\n1. Project title and badges\n2. Description\n3. Features\n4. Installation instructions\n5. Usage examples (if requested)\n6. API reference summary\n7. Contributing guidelines\n8. License\n\nRespond with ONLY the README content in markdown format, no JSON wrapper.")
+              }]
+            }' > request.json
+
+          curl -s -X POST "https://api.anthropic.com/v1/messages" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -d @request.json > response.json
+
+          jq -r '.content[0].text' response.json > generated_readme.md
+
+      - name: Generate API docs with Claude
+        if: inputs.ai-provider == 'claude' && (inputs.doc-type == 'api' || inputs.doc-type == 'all')
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          MODEL="${{ needs.validate-inputs.outputs.model }}"
+          SOURCE_CONTENT=$(cat combined_source.txt | head -3000)
+
+          jq -n \
+            --arg model "$MODEL" \
+            --arg source "$SOURCE_CONTENT" \
+            '{
+              model: $model,
+              max_tokens: 4000,
+              messages: [{
+                role: "user",
+                content: ("Generate API documentation for this codebase.\n\nSource code:\n```\n" + $source + "\n```\n\nGenerate comprehensive API documentation with:\n1. Overview\n2. Function/method signatures\n3. Parameter descriptions\n4. Return values\n5. Usage examples\n6. Error handling\n\nFormat as markdown. Respond with ONLY the documentation content.")
+              }]
+            }' > request.json
+
+          curl -s -X POST "https://api.anthropic.com/v1/messages" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -d @request.json > response.json
+
+          jq -r '.content[0].text' response.json > generated_api.md
+
+      - name: Generate changelog with Claude
+        if: inputs.ai-provider == 'claude' && (inputs.doc-type == 'changelog' || inputs.doc-type == 'all')
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          MODEL="${{ needs.validate-inputs.outputs.model }}"
+
+          # Get recent commits
+          git log --oneline -50 > recent_commits.txt
+
+          COMMITS=$(cat recent_commits.txt)
+
+          jq -n \
+            --arg model "$MODEL" \
+            --arg commits "$COMMITS" \
+            '{
+              model: $model,
+              max_tokens: 2000,
+              messages: [{
+                role: "user",
+                content: ("Generate a CHANGELOG.md based on these git commits.\n\nRecent commits:\n" + $commits + "\n\nGenerate a changelog following Keep a Changelog format:\n- Group by version/date\n- Categories: Added, Changed, Deprecated, Removed, Fixed, Security\n\nRespond with ONLY the changelog content in markdown format.")
+              }]
+            }' > request.json
+
+          curl -s -X POST "https://api.anthropic.com/v1/messages" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -d @request.json > response.json
+
+          jq -r '.content[0].text' response.json > generated_changelog.md
+
+      - name: Generate docs with OpenAI
+        if: inputs.ai-provider == 'openai'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          MODEL="${{ needs.validate-inputs.outputs.model }}"
+          DOC_TYPE="${{ inputs.doc-type }}"
+          PROJECT_NAME="${{ steps.context.outputs.project_name }}"
+
+          SOURCE_CONTENT=$(cat combined_source.txt | head -2000)
+          FILE_STRUCTURE=$(cat file_structure.txt)
+
+          if [ "$DOC_TYPE" = "readme" ] || [ "$DOC_TYPE" = "all" ]; then
+            jq -n \
+              --arg model "$MODEL" \
+              --arg name "$PROJECT_NAME" \
+              --arg files "$FILE_STRUCTURE" \
+              --arg source "$SOURCE_CONTENT" \
+              '{
+                model: $model,
+                max_tokens: 4000,
+                messages: [{
+                  role: "system",
+                  content: "You are a technical writer. Generate professional documentation in markdown format."
+                }, {
+                  role: "user",
+                  content: ("Generate a README.md for project: " + $name + "\n\nFiles:\n" + $files + "\n\nSource:\n```\n" + $source + "\n```")
+                }]
+              }' > request.json
+
+            curl -s -X POST "https://api.openai.com/v1/chat/completions" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $OPENAI_API_KEY" \
+              -d @request.json > response.json
+
+            jq -r '.choices[0].message.content' response.json > generated_readme.md
+          fi
+
+          if [ "$DOC_TYPE" = "api" ] || [ "$DOC_TYPE" = "all" ]; then
+            jq -n \
+              --arg model "$MODEL" \
+              --arg source "$SOURCE_CONTENT" \
+              '{
+                model: $model,
+                max_tokens: 4000,
+                messages: [{
+                  role: "system",
+                  content: "You are a technical writer. Generate API documentation in markdown format."
+                }, {
+                  role: "user",
+                  content: ("Generate API documentation:\n```\n" + $source + "\n```")
+                }]
+              }' > request.json
+
+            curl -s -X POST "https://api.openai.com/v1/chat/completions" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $OPENAI_API_KEY" \
+              -d @request.json > response.json
+
+            jq -r '.choices[0].message.content' response.json > generated_api.md
+          fi
+
+          if [ "$DOC_TYPE" = "changelog" ] || [ "$DOC_TYPE" = "all" ]; then
+            git log --oneline -50 > recent_commits.txt
+            COMMITS=$(cat recent_commits.txt)
+
+            jq -n \
+              --arg model "$MODEL" \
+              --arg commits "$COMMITS" \
+              '{
+                model: $model,
+                max_tokens: 2000,
+                messages: [{
+                  role: "system",
+                  content: "Generate a CHANGELOG.md following Keep a Changelog format."
+                }, {
+                  role: "user",
+                  content: ("Commits:\n" + $commits)
+                }]
+              }' > request.json
+
+            curl -s -X POST "https://api.openai.com/v1/chat/completions" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $OPENAI_API_KEY" \
+              -d @request.json > response.json
+
+            jq -r '.choices[0].message.content' response.json > generated_changelog.md
+          fi
+
+      - name: Generate docs with Gemini
+        if: inputs.ai-provider == 'gemini'
+        env:
+          GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          MODEL="${{ needs.validate-inputs.outputs.model }}"
+          DOC_TYPE="${{ inputs.doc-type }}"
+          PROJECT_NAME="${{ steps.context.outputs.project_name }}"
+
+          SOURCE_CONTENT=$(cat combined_source.txt | head -2000)
+          FILE_STRUCTURE=$(cat file_structure.txt)
+
+          if [ "$DOC_TYPE" = "readme" ] || [ "$DOC_TYPE" = "all" ]; then
+            jq -n \
+              --arg name "$PROJECT_NAME" \
+              --arg files "$FILE_STRUCTURE" \
+              --arg source "$SOURCE_CONTENT" \
+              '{
+                contents: [{
+                  parts: [{
+                    text: ("Generate a comprehensive README.md for project: " + $name + "\n\nFile structure:\n" + $files + "\n\nSource code:\n```\n" + $source + "\n```\n\nInclude: title, description, features, installation, usage, API, contributing, license.")
+                  }]
+                }]
+              }' > request.json
+
+            curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=$GOOGLE_AI_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d @request.json > response.json
+
+            jq -r '.candidates[0].content.parts[0].text' response.json > generated_readme.md
+          fi
+
+          if [ "$DOC_TYPE" = "api" ] || [ "$DOC_TYPE" = "all" ]; then
+            jq -n \
+              --arg source "$SOURCE_CONTENT" \
+              '{
+                contents: [{
+                  parts: [{
+                    text: ("Generate API documentation for:\n```\n" + $source + "\n```")
+                  }]
+                }]
+              }' > request.json
+
+            curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=$GOOGLE_AI_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d @request.json > response.json
+
+            jq -r '.candidates[0].content.parts[0].text' response.json > generated_api.md
+          fi
+
+          if [ "$DOC_TYPE" = "changelog" ] || [ "$DOC_TYPE" = "all" ]; then
+            git log --oneline -50 > recent_commits.txt
+            COMMITS=$(cat recent_commits.txt)
+
+            jq -n \
+              --arg commits "$COMMITS" \
+              '{
+                contents: [{
+                  parts: [{
+                    text: ("Generate CHANGELOG.md (Keep a Changelog format) from:\n" + $commits)
+                  }]
+                }]
+              }' > request.json
+
+            curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=$GOOGLE_AI_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d @request.json > response.json
+
+            jq -r '.candidates[0].content.parts[0].text' response.json > generated_changelog.md
+          fi
+
+      - name: Organize generated docs
+        id: organize
+        run: |
+          set -euo pipefail
+
+          OUTPUT_DIR="${{ inputs.output-dir }}"
+          mkdir -p "$OUTPUT_DIR"
+
+          DOCS_GENERATED=0
+
+          if [ -f "generated_readme.md" ]; then
+            cp generated_readme.md "$OUTPUT_DIR/README.generated.md"
+            DOCS_GENERATED=$((DOCS_GENERATED + 1))
+            echo "Generated README"
+          fi
+
+          if [ -f "generated_api.md" ]; then
+            cp generated_api.md "$OUTPUT_DIR/API.generated.md"
+            DOCS_GENERATED=$((DOCS_GENERATED + 1))
+            echo "Generated API docs"
+          fi
+
+          if [ -f "generated_changelog.md" ]; then
+            cp generated_changelog.md "$OUTPUT_DIR/CHANGELOG.generated.md"
+            DOCS_GENERATED=$((DOCS_GENERATED + 1))
+            echo "Generated CHANGELOG"
+          fi
+
+          echo "docs_generated=$DOCS_GENERATED" >> $GITHUB_OUTPUT
+
+      - name: Show dry-run results
+        if: inputs.dry-run == true
+        run: |
+          echo "## Generated Documentation (Dry Run)" > summary.md
+          echo "" >> summary.md
+
+          for doc in docs/*.generated.md; do
+            [ ! -f "$doc" ] && continue
+            echo "### $(basename "$doc")" >> summary.md
+            echo '```markdown' >> summary.md
+            head -100 "$doc" >> summary.md
+            echo '```' >> summary.md
+            echo "" >> summary.md
+          done
+
+          cat summary.md
+
+      - name: Create PR with documentation
+        if: inputs.create-pr == true && inputs.dry-run == false && steps.organize.outputs.docs_generated != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          DOC_TYPE="${{ inputs.doc-type }}"
+          BRANCH="ai-docs/$DOC_TYPE-$(date +%Y%m%d-%H%M%S)"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "docs: add AI-generated $DOC_TYPE documentation
+
+          Generated documentation using AI (${{ inputs.ai-provider }}).
+
+          Generated by AI Documentation Generator workflow"
+
+          git push origin "$BRANCH"
+
+          # Create PR
+          gh pr create \
+            --title "docs: AI-generated $DOC_TYPE documentation" \
+            --body "## AI Documentation Generator
+
+          This PR contains AI-generated **$DOC_TYPE** documentation.
+
+          ### Provider
+          ${{ inputs.ai-provider }} (${{ needs.validate-inputs.outputs.model }})
+
+          ### Generated Files
+          $(ls -la ${{ inputs.output-dir }}/*.generated.md 2>/dev/null | awk '{print "- " $NF}' || echo "- None")
+
+          ### Review Notes
+          - Please review the generated documentation for accuracy
+          - Rename \`.generated.md\` files as needed
+          - Update any placeholders or incorrect information
+
+          ---
+          *Generated by AI Documentation Generator workflow*" \
+            --base main \
+            --head "$BRANCH"
+
+      - name: Upload docs artifact
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+        with:
+          name: ai-docs-${{ inputs.doc-type }}-${{ github.run_id }}
+          path: |
+            generated_*.md
+            ${{ inputs.output-dir }}/*.generated.md
+          retention-days: 30
