@@ -48,6 +48,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      configs-json: ${{ steps.format.outputs.configs }}
     steps:
       - name: Check workflow inputs
         run: |
@@ -69,6 +71,16 @@ jobs:
 
           echo "✅ Input validation passed"
 
+      - name: Format configs as JSON array
+        id: format
+        run: |
+          # Convert comma-separated configs to JSON array
+          # "release,debug" -> '["release","debug"]'
+          CONFIGS="${{ inputs.bazel-configs }}"
+          JSON_CONFIGS=$(echo "$CONFIGS" | sed 's/[[:space:]]*,[[:space:]]*/","/g' | sed 's/^/["/' | sed 's/$/"]/')
+          echo "configs=$JSON_CONFIGS" >> $GITHUB_OUTPUT
+          echo "Configs JSON: $JSON_CONFIGS"
+
   build-test:
     name: Build and Test (${{ matrix.os }}, ${{ matrix.config }})
     runs-on: ${{ matrix.os }}
@@ -80,7 +92,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        config: ${{ fromJson(format('[{0}]', inputs.bazel-configs)) }}
+        config: ${{ fromJson(needs.validate-inputs.outputs.configs-json) }}
 
     steps:
       - name: Checkout code
