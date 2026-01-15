@@ -1,61 +1,108 @@
-# AI Agent Skills
+# AI Agent Skills - GitHub Actions Workflows
 
-This directory contains skill definitions for AI agents used in the reusable GitHub Actions workflows.
+This directory contains skill definitions for AI agents that review, fix, and document GitHub Actions workflows.
 
 ## Available Skills
 
-| Skill | File | Description |
-|-------|------|-------------|
-| Code Reviewer | `code-reviewer.md` | PR code review with quality scoring |
-| Security Analyst | `security-analyst.md` | Security vulnerability detection |
-| Issue Triager | `issue-triager.md` | Issue categorization and prioritization |
-| Code Fixer | `code-fixer.md` | Automated code repair |
-| OpenSpec Reviewer | `openspec-reviewer.md` | Design document validation |
-| Doc Generator | `doc-generator.md` | Documentation generation |
+| Skill | File | Purpose |
+|-------|------|---------|
+| Code Reviewer | `code-reviewer.md` | Review workflow PRs for security and best practices |
+| Security Analyst | `security-analyst.md` | Detect vulnerabilities in workflows |
+| Issue Triager | `issue-triager.md` | Triage workflow-related issues |
+| Code Fixer | `code-fixer.md` | Fix security and reliability issues |
+| OpenSpec Reviewer | `openspec-reviewer.md` | Validate workflow specifications |
+| Doc Generator | `doc-generator.md` | Generate workflow documentation |
 
-## Skill Structure
+## Workflow-Specific Focus
 
-Each skill definition includes:
+All skills are tailored for GitHub Actions workflows and include:
 
-- **Role**: What the agent does
-- **Capabilities**: What the agent can do
-- **Instructions**: How the agent should behave
-- **Output Format**: Expected response structure
+- **Action Pinning**: SHA vs tag validation
+- **Injection Prevention**: Untrusted input handling
+- **Permission Scoping**: Least privilege verification
+- **Secret Handling**: Secure secret usage patterns
+- **Supply Chain Security**: Action source validation
+
+## OpenSpec Integration
+
+All skills use the official `openspec` CLI:
+
+```bash
+# List changes and specs
+openspec list --changes
+openspec list --specs
+
+# View specific items
+openspec show <name>
+openspec show <name> --json
+
+# Validate
+openspec validate
+openspec validate --strict
+```
 
 ## Using Skills in Workflows
 
-Skills are referenced by workflows that load the skill definition and include it in the AI prompt. The skill content is prepended to the specific task instructions.
-
-Example workflow usage:
+Skills are loaded by AI workflows and included in prompts:
 
 ```yaml
-- name: Load skill
+- name: Load agent skill
   id: skill
   run: |
-    if [ -f ".agents/skills/code-reviewer.md" ]; then
-      cat .agents/skills/code-reviewer.md > skill_prompt.txt
+    SKILL_PATH=".agents/skills/code-reviewer.md"
+    if [ -f "$SKILL_PATH" ]; then
+      echo "has_skill=true" >> $GITHUB_OUTPUT
     fi
 
 - name: Run AI Review
   uses: anthropics/claude-code-action@v1
   with:
     prompt: |
-      $(cat skill_prompt.txt)
-
-      Now review this specific PR...
+      ${{ steps.skill.outputs.has_skill == 'true' &&
+          'Read .agents/skills/code-reviewer.md for instructions.' ||
+          'You are a code reviewer.' }}
 ```
 
-## OpenSpec Integration
+## Security Patterns
 
-All skills are designed to work with OpenSpec design documents:
+### Injection Vulnerabilities
 
-1. Skills reference `openspec/` directory for design context
-2. Skills validate changes against documented architecture
-3. Skills suggest updates to specs when needed
+```yaml
+# VULNERABLE
+run: echo "${{ github.event.issue.title }}"
+
+# SAFE
+env:
+  TITLE: ${{ github.event.issue.title }}
+run: echo "$TITLE"
+```
+
+### Action Pinning
+
+```yaml
+# INSECURE
+uses: actions/checkout@v4
+
+# SECURE
+uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+```
+
+### Permission Minimization
+
+```yaml
+# OVERLY PERMISSIVE
+permissions: write-all
+
+# LEAST PRIVILEGE
+permissions:
+  contents: read
+  pull-requests: write
+```
 
 ## Adding New Skills
 
-1. Create a new `.md` file in this directory
-2. Follow the standard skill structure
-3. Update this README with the new skill
-4. Reference the skill in relevant workflows
+1. Create `skill-name.md` following the template structure
+2. Focus on GitHub Actions workflow specifics
+3. Include `openspec` CLI integration
+4. Update this README
+5. Reference in relevant workflow prompts

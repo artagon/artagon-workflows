@@ -136,6 +136,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Node.js for OpenSpec CLI
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: '20'
+
+      - name: Install OpenSpec CLI
+        run: npm install -g openspec
+
       - name: Load agent skill and openspec context
         id: context
         run: |
@@ -147,13 +155,15 @@ jobs:
             echo "has_skill=false" >> $GITHUB_OUTPUT
           fi
 
-          # Check for openspec
-          OPENSPEC_PATH="${{ inputs.openspec-path }}"
-          if [ -f ".agents/utils/openspec.sh" ]; then
-            source .agents/utils/openspec.sh
-            echo "has_openspec=$(has_openspec "$OPENSPEC_PATH")" >> $GITHUB_OUTPUT
-          elif [ -d "$OPENSPEC_PATH" ]; then
-            echo "has_openspec=true" >> $GITHUB_OUTPUT
+          # Check for openspec using official CLI
+          if command -v openspec &> /dev/null; then
+            CHANGES=$(openspec list --changes 2>/dev/null || echo "")
+            SPECS=$(openspec list --specs 2>/dev/null || echo "")
+            if [ -n "$CHANGES" ] || [ -n "$SPECS" ]; then
+              echo "has_openspec=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_openspec=false" >> $GITHUB_OUTPUT
+            fi
           else
             echo "has_openspec=false" >> $GITHUB_OUTPUT
           fi
@@ -176,7 +186,12 @@ jobs:
 
             ${{ steps.context.outputs.has_openspec == 'true' && '## Project Design Context (OpenSpec)
 
-            The repository contains OpenSpec design documents in the openspec/ directory. Use the Read tool to examine relevant openspec files to understand the intended design before making fixes. Ensure fixes align with the documented architecture.' || '' }}
+            This repository uses OpenSpec for spec-driven development. Use the openspec CLI:
+            - `openspec list --changes` - List active change proposals
+            - `openspec show <name>` - View a specific change or spec
+            - `openspec validate` - Validate changes against specs
+
+            Ensure fixes align with the documented architecture.' || '' }}
 
             For each file that needs fixes:
             1. Identify the specific issues

@@ -136,43 +136,39 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Node.js for OpenSpec CLI
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: '20'
+
+      - name: Install OpenSpec CLI
+        run: npm install -g openspec
+
       - name: Load agent skill and openspec context
         id: context
         run: |
           # Load code reviewer skill if available
           SKILL_PATH=".agents/skills/code-reviewer.md"
           if [ -f "$SKILL_PATH" ]; then
-            cat "$SKILL_PATH" > skill_prompt.txt
             echo "has_skill=true" >> $GITHUB_OUTPUT
           else
             echo "has_skill=false" >> $GITHUB_OUTPUT
           fi
 
-          # Gather openspec context using utility or inline
-          OPENSPEC_PATH="${{ inputs.openspec-path }}"
-          if [ -f ".agents/utils/openspec.sh" ]; then
-            source .agents/utils/openspec.sh
-            generate_openspec_prompt "$OPENSPEC_PATH" 50 > openspec_context.txt
-            echo "has_openspec=$(has_openspec "$OPENSPEC_PATH")" >> $GITHUB_OUTPUT
-          else
-            # Fallback to inline gathering
-            echo "" > openspec_context.txt
-            if [ -d "$OPENSPEC_PATH" ]; then
+          # Check for openspec using official CLI
+          if command -v openspec &> /dev/null; then
+            CHANGES=$(openspec list --changes 2>/dev/null || echo "")
+            SPECS=$(openspec list --specs 2>/dev/null || echo "")
+            if [ -n "$CHANGES" ] || [ -n "$SPECS" ]; then
               echo "has_openspec=true" >> $GITHUB_OUTPUT
-              for spec_dir in "$OPENSPEC_PATH"*/; do
-                if [ -d "$spec_dir" ]; then
-                  SPEC_NAME=$(basename "$spec_dir")
-                  for doc in design.md proposal.md; do
-                    if [ -f "${spec_dir}${doc}" ]; then
-                      echo -e "\n--- OpenSpec: ${SPEC_NAME}/${doc} ---" >> openspec_context.txt
-                      head -100 "${spec_dir}${doc}" >> openspec_context.txt
-                    fi
-                  done
-                fi
-              done
+              # Generate context using openspec show
+              openspec list --changes 2>/dev/null | head -5 > openspec_changes.txt || true
+              openspec list --specs 2>/dev/null | head -5 > openspec_specs.txt || true
             else
               echo "has_openspec=false" >> $GITHUB_OUTPUT
             fi
+          else
+            echo "has_openspec=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Run Claude Code Review
@@ -190,9 +186,13 @@ jobs:
 
             ${{ steps.context.outputs.has_openspec == 'true' && '## Project Design Context (OpenSpec)
 
-            The repository contains OpenSpec design documents that describe the intended architecture and design decisions. Please review the PR against these specifications to ensure changes align with the documented design.
+            This repository uses OpenSpec for spec-driven development. Use the openspec CLI to examine design context:
+            - `openspec list --changes` - List active change proposals
+            - `openspec list --specs` - List specifications
+            - `openspec show <name>` - View a specific change or spec
+            - `openspec validate` - Validate changes against specs
 
-            Use the Read tool to examine files in the openspec/ directory for relevant design context. Also check .agents/skills/ for agent role definitions.' || '' }}
+            Review the PR against these specifications to ensure changes align with the documented design. Also check .agents/skills/ for agent role definitions.' || '' }}
 
             Please review this pull request and provide:
             1. A brief summary of the changes

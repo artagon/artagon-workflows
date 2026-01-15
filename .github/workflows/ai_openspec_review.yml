@@ -121,11 +121,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Node.js for OpenSpec CLI
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: '20'
+
+      - name: Install OpenSpec CLI
+        run: npm install -g openspec
+
       - name: Identify changed openspec files and load skill
         id: context
         run: |
-          OPENSPEC_PATH="${{ inputs.openspec-path }}"
-
           # Load openspec reviewer skill if available
           SKILL_PATH=".agents/skills/openspec-reviewer.md"
           if [ -f "$SKILL_PATH" ]; then
@@ -134,25 +140,20 @@ jobs:
             echo "has_skill=false" >> $GITHUB_OUTPUT
           fi
 
-          # Get list of changed openspec files in this PR
+          # Get list of changes and specs using official CLI
+          CHANGES=$(openspec list --changes 2>/dev/null || echo "")
+          SPECS=$(openspec list --specs 2>/dev/null || echo "")
+
+          echo "changes=$CHANGES" >> $GITHUB_OUTPUT
+          echo "specs=$SPECS" >> $GITHUB_OUTPUT
+
+          # Get changed files in this PR
           if [ -n "${{ github.event.pull_request.base.sha }}" ]; then
-            CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..HEAD -- "$OPENSPEC_PATH" | tr '\n' ' ')
+            CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..HEAD -- "openspec/" | tr '\n' ' ')
           else
-            CHANGED=$(find "$OPENSPEC_PATH" -type f -name "*.md" | tr '\n' ' ')
+            CHANGED=""
           fi
-
           echo "changed_files=$CHANGED" >> $GITHUB_OUTPUT
-
-          # List all openspec directories
-          SPECS=""
-          if [ -d "$OPENSPEC_PATH" ]; then
-            for spec_dir in "$OPENSPEC_PATH"*/; do
-              if [ -d "$spec_dir" ]; then
-                SPECS="$SPECS $(basename "$spec_dir")"
-              fi
-            done
-          fi
-          echo "spec_dirs=$SPECS" >> $GITHUB_OUTPUT
 
       - name: Run Claude OpenSpec Review
         uses: anthropics/claude-code-action@v1
@@ -163,17 +164,20 @@ jobs:
 
             Read the skill definition in .agents/skills/openspec-reviewer.md for detailed instructions on how to review OpenSpec documents.' || 'You are a senior technical architect reviewing OpenSpec design documents.' }}
 
-            OpenSpec is a structured approach to documenting software changes with:
-            - **proposal.md**: Problem statement, proposed solution, alternatives considered
-            - **design.md**: Technical architecture, component design, API specifications
-            - **tasks.md**: Implementation tasks, acceptance criteria, progress tracking
+            OpenSpec is an AI-native system for spec-driven development. Use the openspec CLI:
+            - `openspec list --changes` - List active change proposals
+            - `openspec list --specs` - List specifications
+            - `openspec show <name>` - View a specific change or spec
+            - `openspec show <name> --json` - Get structured JSON output
+            - `openspec validate` - Validate changes against specs
+            - `openspec validate --strict` - Strict validation mode
 
             Review depth: ${{ inputs.review-depth }}
-            OpenSpec path: ${{ inputs.openspec-path }}
             Changed files: ${{ steps.context.outputs.changed_files }}
-            Spec directories: ${{ steps.context.outputs.spec_dirs }}
+            Active changes: ${{ steps.context.outputs.changes }}
+            Specifications: ${{ steps.context.outputs.specs }}
 
-            Use the Read tool to examine the OpenSpec files and provide:
+            Use the openspec CLI to examine the specs and changes, then provide:
 
             ## 1. Document Completeness
             ${{ inputs.check-completeness && 'Check each openspec directory for required files (proposal.md, design.md, tasks.md). Report missing documents.' || 'Skip completeness check.' }}
