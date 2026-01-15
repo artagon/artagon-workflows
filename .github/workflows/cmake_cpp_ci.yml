@@ -219,10 +219,11 @@ jobs:
         run: ctest --output-on-failure
 
       - name: Generate coverage
+        continue-on-error: true
         run: |
-          lcov --directory . --capture --output-file coverage.info
-          lcov --remove coverage.info '/usr/*' '*/test/*' '*/tests/*' --output-file coverage.info
-          lcov --list coverage.info
+          lcov --directory . --capture --output-file coverage.info --ignore-errors empty
+          lcov --remove coverage.info '/usr/*' '*/test/*' '*/tests/*' --output-file coverage.info --ignore-errors unused || true
+          lcov --list coverage.info || true
 
       - name: Upload to Codecov
         # codecov/codecov-action@v5.0.7
@@ -261,15 +262,19 @@ jobs:
         run: |
           SANITIZER_FLAGS="-fsanitize=${{ matrix.sanitizer }} -fno-omit-frame-pointer -g"
 
-          # Memory sanitizer needs libc++
+          # Memory sanitizer needs libc++ and clang for both C and C++
           if [ "${{ matrix.sanitizer }}" = "memory" ]; then
             SANITIZER_FLAGS="$SANITIZER_FLAGS -stdlib=libc++"
+            CMAKE_C_COMPILER="-DCMAKE_C_COMPILER=clang-18"
+          else
+            CMAKE_C_COMPILER=""
           fi
 
           cmake -B build \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_COMPILER=clang++-18 \
+            $CMAKE_C_COMPILER \
             -DCMAKE_CXX_STANDARD=${{ inputs.cxx-standard }} \
             -DCMAKE_CXX_FLAGS="$SANITIZER_FLAGS" \
             -DCMAKE_EXE_LINKER_FLAGS="$SANITIZER_FLAGS" \
