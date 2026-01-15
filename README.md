@@ -16,7 +16,7 @@ Reusable GitHub Actions workflows for Artagon projects providing standardized CI
 
 - **20+ Reusable Workflows** - Build, test, release, and security scanning
 - **Security-First Design** - All actions pinned to commit SHAs, input validation, least-privilege permissions
-- **Multi-Language Support** - Java/Maven, C/C++/CMake, Bazel, Gradle
+- **Multi-Language Support** - Java/Maven, C/C++/CMake, Bazel, Gradle, Rust
 - **Release Automation** - Maven Central, GitHub Releases, Docker Hub
 - **Security Scanning** - CodeQL, dependency review, vulnerability scanning
 
@@ -29,6 +29,7 @@ Reusable GitHub Actions workflows for Artagon projects providing standardized CI
 | CMake (C++) | `cmake_cpp_ci.yml` | `cmake_cpp_release.yml` | - |
 | Bazel | `bazel_multi_ci.yml` | `bazel_multi_release.yml` | - |
 | Gradle | `gradle_build.yml` | `gradle_release.yml` | - |
+| Rust | `rust_ci.yml` | Planned | - |
 
 ## Project Structure
 
@@ -100,6 +101,20 @@ jobs:
     uses: artagon/artagon-workflows/.github/workflows/bazel_multi_ci.yml@v1
     with:
       bazel-configs: 'release,debug'
+    secrets: inherit
+```
+
+### Rust CI
+
+```yaml
+name: CI
+on: [push, pull_request]
+
+jobs:
+  ci:
+    uses: artagon/artagon-workflows/.github/workflows/rust_ci.yml@main
+    with:
+      rust-version: 'stable'
     secrets: inherit
 ```
 

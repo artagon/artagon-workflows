@@ -1,7 +1,8 @@
 # Rust Release Strategy
 
-> **Status: PLANNED** - This documentation is for future Rust workflow support.
-> Currently, no Rust workflows are implemented. See [WORKFLOWS_USAGE.md](WORKFLOWS_USAGE.md) for available workflows.
+> **Status: PARTIAL** - Rust CI workflow (`rust_ci.yml`) is available.
+> Release workflow (`rust_release.yml`) is planned for future implementation.
+> See [WORKFLOWS_USAGE.md](WORKFLOWS_USAGE.md) for available workflows.
 
 **Language:** Rust
 **Build System:** Cargo
@@ -862,6 +863,8 @@ myproject/
 
 ### CI Configuration
 
+Use the `rust_ci.yml` reusable workflow for CI:
+
 ```yaml
 # .github/workflows/ci.yml
 name: CI
@@ -872,67 +875,38 @@ on:
   pull_request:
 
 jobs:
-  test:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [stable, beta, '1.70']  # MSRV
+  # Test with stable Rust
+  ci-stable:
+    uses: artagon/artagon-workflows/.github/workflows/rust_ci.yml@main
+    with:
+      rust-version: 'stable'
+      enable-coverage: true
+    secrets: inherit
 
-    runs-on: ${{ matrix.os }}
+  # Test with MSRV
+  ci-msrv:
+    uses: artagon/artagon-workflows/.github/workflows/rust_ci.yml@main
+    with:
+      rust-version: '1.70'
+      enable-coverage: false
+    secrets: inherit
 
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.rust }}
-          components: rustfmt, clippy
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Check formatting
-        run: cargo fmt --check
-
-      - name: Run clippy
-        run: cargo clippy --all-features -- -D warnings
-
-      - name: Build
-        run: cargo build --all-features
-
-      - name: Run tests
-        run: cargo test --all-features
-
-      - name: Run doc tests
-        run: cargo test --doc
-
-      - name: Check documentation
-        run: cargo doc --all-features --no-deps
-
-  security:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Run cargo audit
-        run: cargo audit
-
-  coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Install tarpaulin
-        run: cargo install cargo-tarpaulin
-      - name: Generate coverage
-        run: cargo tarpaulin --out Xml
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
+  # Test with beta (optional)
+  ci-beta:
+    uses: artagon/artagon-workflows/.github/workflows/rust_ci.yml@main
+    with:
+      rust-version: 'beta'
+      enable-coverage: false
+    secrets: inherit
 ```
+
+The reusable workflow includes:
+- Build and test with cargo
+- Clippy linting (`-D warnings`)
+- Rustfmt format checking
+- Code coverage with cargo-tarpaulin
+- Cargo caching for faster builds
+- Nix flake detection
 
 ---
 

@@ -14,7 +14,7 @@ This guide explains how to exercise the reusable workflows in this repository ag
 | C (CMake) | `cmake_c_ci.yml` | `cmake_c_release.yml` | [curl/curl](https://github.com/curl/curl) |
 | C++ (CMake) | `cmake_cpp_ci.yml` | `cmake_cpp_release.yml` | [fmtlib/fmt](https://github.com/fmtlib/fmt) |
 | Bazel (Polyglot) | `bazel_multi_ci.yml` | `bazel_multi_release.yml` | [google/flatbuffers](https://github.com/google/flatbuffers) |
-| Rust (Cargo) | Planned | Planned | [rust-lang/rustlings](https://github.com/rust-lang/rustlings) |
+| Rust (Cargo) | `rust_ci.yml` | Planned | [rust-lang/rustlings](https://github.com/rust-lang/rustlings) |
 
 > **Tip:** Fork each project under a test organization so we can add workflow references without affecting upstream repositories.
 
@@ -137,7 +137,7 @@ The following repositories are dedicated test consumers that validate the reusab
 |------------|-------|---------|
 | [artagon-workflow-test-bazel](https://github.com/artagon/artagon-workflow-test-bazel) | `bazel_multi_ci.yml` | On Bazel workflow changes |
 | [artagon-workflow-test-cmake](https://github.com/artagon/artagon-workflow-test-cmake) | `cmake_c_ci.yml`, `cmake_cpp_ci.yml` | On CMake workflow changes |
-| [artagon-workflow-test-rust](https://github.com/artagon/artagon-workflow-test-rust) | Rust workflows (placeholder) | On Rust workflow changes |
+| [artagon-workflow-test-rust](https://github.com/artagon/artagon-workflow-test-rust) | `rust_ci.yml` | On Rust workflow changes |
 
 ### Automatic Triggering
 

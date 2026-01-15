@@ -102,10 +102,11 @@ jobs:
 | `build-type` | Build type (Debug, Release) | No | `Debug` |
 
 **Features**:
-- Tests on Ubuntu, macOS, Windows
+- Tests on Ubuntu (Linux)
 - Nix flake support (auto-detected)
-- Multiple compiler support (GCC, Clang, MSVC)
+- Multiple compiler support (GCC, Clang)
 - ASAN, UBSAN, TSAN sanitizer builds
+- Code coverage with lcov
 
 ---
 
@@ -153,10 +154,48 @@ jobs:
 | `bazel-configs` | Bazel config flags | No | `''` |
 
 **Features**:
-- Multi-OS support (Linux, macOS, Windows)
+- Tests on Ubuntu (Linux)
 - Nix flake integration
 - Buildifier formatting checks
 - Test result artifacts
+- Bazel query dependency analysis
+
+---
+
+#### Rust CI (`rust_ci.yml`)
+
+Builds and tests Rust projects using Cargo with clippy, rustfmt, and coverage support.
+
+**When to use**: CI for Rust projects using Cargo.
+
+**Usage**:
+```yaml
+jobs:
+  rust-ci:
+    uses: artagon/artagon-workflows/.github/workflows/rust_ci.yml@main
+    with:
+      rust-version: 'stable'
+      enable-coverage: true
+    secrets: inherit
+```
+
+**Inputs**:
+| Input | Description | Required | Default |
+|-------|-------------|----------|---------|
+| `rust-version` | Rust toolchain (stable, beta, nightly, or version) | No | `stable` |
+| `enable-clippy` | Run clippy lints | No | `true` |
+| `enable-rustfmt` | Check code formatting | No | `true` |
+| `enable-coverage` | Generate code coverage | No | `true` |
+| `cargo-features` | Cargo features to enable | No | `''` |
+| `cargo-args` | Additional cargo arguments | No | `''` |
+
+**Features**:
+- Tests on Ubuntu (Linux)
+- Nix flake support (auto-detected)
+- Cargo caching for faster builds
+- Clippy linting with `-D warnings`
+- Rustfmt format checking
+- Code coverage with cargo-tarpaulin
 
 ---
 
@@ -552,6 +591,7 @@ Workflows automatically cache:
 - Maven dependencies (`~/.m2/repository`)
 - Bazel artifacts (`~/.cache/bazel`)
 - Python packages (pip cache)
+- Cargo registry and target (`~/.cargo/registry`, `target/`)
 
 ---
 
@@ -695,6 +735,42 @@ jobs:
 
 ---
 
+### Complete Rust Project
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pr-validation:
+    if: github.event_name == 'pull_request'
+    uses: artagon/artagon-workflows/.github/workflows/pr_validation.yml@main
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+
+  rust-ci:
+    uses: artagon/artagon-workflows/.github/workflows/rust_ci.yml@main
+    with:
+      rust-version: 'stable'
+      enable-coverage: true
+    secrets: inherit
+
+  # Test with MSRV
+  rust-msrv:
+    uses: artagon/artagon-workflows/.github/workflows/rust_ci.yml@main
+    with:
+      rust-version: '1.70'
+      enable-coverage: false
+    secrets: inherit
+```
+
+---
+
 ## Troubleshooting
 
 ### Issue: Workflow not found
@@ -751,5 +827,5 @@ Found a bug or want to add a workflow? See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
-**Last Updated**: 2025-10-25
-**Version**: 2.0.0
+**Last Updated**: 2026-01-15
+**Version**: 2.1.0
