@@ -43,28 +43,28 @@
 
 ## 5. Create Rust CI Workflow (rust_ci.yml)
 
-- [ ] 5.1 Create rust_ci.yml with workflow_call trigger
-- [ ] 5.2 Add validate-inputs job with input validation
-- [ ] 5.3 Add build-test job with cargo build/test
-- [ ] 5.4 Add clippy job for linting
-- [ ] 5.5 Add rustfmt job for format checking
-- [ ] 5.6 Add coverage job with cargo-tarpaulin
-- [ ] 5.7 Add Nix flake detection support
-- [ ] 5.8 Add Cargo caching
+- [x] 5.1 Create rust_ci.yml with workflow_call trigger
+- [x] 5.2 Add validate-inputs job with input validation
+- [x] 5.3 Add build-test job with cargo build/test
+- [x] 5.4 Add clippy job for linting
+- [x] 5.5 Add rustfmt job for format checking
+- [x] 5.6 Add coverage job with cargo-tarpaulin
+- [x] 5.7 Add Nix flake detection support
+- [x] 5.8 Add Cargo caching
 
 **Acceptance**: rust_ci.yml is callable from other repos
-**Status**: PENDING
+**Status**: COMPLETED
 
 ## 6. Fix Rust Test Project
 
-- [ ] 6.1 Verify Cargo.toml is valid
-- [ ] 6.2 Ensure src/lib.rs exists with tests
-- [ ] 6.3 Ensure src/main.rs exists
-- [ ] 6.4 Update CI to call rust_ci.yml reusable workflow
-- [ ] 6.5 Add test configurations (stable, nightly)
+- [x] 6.1 Verify Cargo.toml is valid
+- [x] 6.2 Ensure src/lib.rs exists with tests
+- [x] 6.3 Ensure src/main.rs exists
+- [x] 6.4 Update CI to call rust_ci.yml reusable workflow
+- [x] 6.5 Add test configurations (stable, MSRV)
 
 **Acceptance**: Rust CI jobs pass
-**Status**: PENDING
+**Status**: COMPLETED
 
 ## 7. Update Test Repo CI Configurations
 
@@ -88,9 +88,9 @@
 
 - [x] 9.1 Trigger Bazel test repo CI and verify all jobs pass
 - [x] 9.2 Trigger CMake test repo CI and verify all jobs pass
-- [ ] 9.3 Trigger Rust test repo CI and verify pass
+- [x] 9.3 Trigger Rust test repo CI and verify pass
 - [x] 9.4 Run trigger_test_repos.yml and verify all dispatches succeed
 - [ ] 9.5 Monitor scheduled runs for 3 days
 
 **Acceptance**: All test repos consistently pass
-**Status**: IN PROGRESS (Rust workflow pending)
+**Status**: MOSTLY COMPLETE (monitoring pending)
