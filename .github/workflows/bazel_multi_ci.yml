@@ -314,13 +314,15 @@ jobs:
 
       - name: Analyze dependencies
         run: |
-          bazel query --output=graph 'deps(${{ inputs.targets }})' > deps.dot || true
+          # Use set() to handle multiple space-separated targets
+          bazel query --output=graph "deps(set(${{ inputs.targets }}))" > deps.dot || true
 
       - name: Upload dependency graph
         if: always()
+        continue-on-error: true  # Allow failures if artifact already exists
         # actions/upload-artifact@v4.4.3
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
-          name: dependency-graph
+          name: dependency-graph-${{ github.job }}
           path: deps.dot
           retention-days: 7
