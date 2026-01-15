@@ -1,0 +1,233 @@
+# Trigger Test Repository Workflows
+#
+# Automatically triggers CI in test repositories when reusable workflows
+# are updated. This ensures external consumers are validated against
+# the latest workflow changes.
+#
+# Test repositories must have repository_dispatch configured:
+#   repository_dispatch:
+#     types: [workflow-updated]
+
+name: Trigger Test Repos
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/bazel_*.yml'
+      - '.github/workflows/cmake_*.yml'
+      - '.github/workflows/gradle_*.yml'
+      - '.github/workflows/maven_*.yml'
+      - '.github/workflows/rust_*.yml'
+  workflow_dispatch:
+    inputs:
+      repos:
+        description: 'Repos to trigger (comma-separated: bazel,cmake,rust or "all")'
+        required: false
+        default: 'all'
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  # Test repository names
+  BAZEL_REPO: artagon/artagon-workflow-test-bazel
+  CMAKE_REPO: artagon/artagon-workflow-test-cmake
+  RUST_REPO: artagon/artagon-workflow-test-rust
+
+jobs:
+  detect-changes:
+    name: Detect Workflow Changes
+    runs-on: ubuntu-latest
+    outputs:
+      bazel: ${{ steps.changes.outputs.bazel }}
+      cmake: ${{ steps.changes.outputs.cmake }}
+      rust: ${{ steps.changes.outputs.rust }}
+      any_changed: ${{ steps.changes.outputs.any_changed }}
+    steps:
+      - name: Checkout code
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed workflows
+        id: changes
+        run: |
+          set -euo pipefail
+
+          # For manual dispatch, check input
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            REPOS="${{ inputs.repos }}"
+            if [ "$REPOS" = "all" ]; then
+              echo "bazel=true" >> $GITHUB_OUTPUT
+              echo "cmake=true" >> $GITHUB_OUTPUT
+              echo "rust=true" >> $GITHUB_OUTPUT
+              echo "any_changed=true" >> $GITHUB_OUTPUT
+            else
+              echo "bazel=false" >> $GITHUB_OUTPUT
+              echo "cmake=false" >> $GITHUB_OUTPUT
+              echo "rust=false" >> $GITHUB_OUTPUT
+
+              if echo "$REPOS" | grep -q "bazel"; then
+                echo "bazel=true" >> $GITHUB_OUTPUT
+              fi
+              if echo "$REPOS" | grep -q "cmake"; then
+                echo "cmake=true" >> $GITHUB_OUTPUT
+              fi
+              if echo "$REPOS" | grep -q "rust"; then
+                echo "rust=true" >> $GITHUB_OUTPUT
+              fi
+              echo "any_changed=true" >> $GITHUB_OUTPUT
+            fi
+            exit 0
+          fi
+
+          # For push events, detect actual changes
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+
+          BAZEL_CHANGED=false
+          CMAKE_CHANGED=false
+          RUST_CHANGED=false
+
+          if echo "$CHANGED_FILES" | grep -qE '^\.github/workflows/bazel_'; then
+            BAZEL_CHANGED=true
+          fi
+
+          if echo "$CHANGED_FILES" | grep -qE '^\.github/workflows/cmake_'; then
+            CMAKE_CHANGED=true
+          fi
+
+          if echo "$CHANGED_FILES" | grep -qE '^\.github/workflows/(rust_|gradle_|maven_)'; then
+            # Rust repo tests Rust workflows; also trigger for build system changes
+            RUST_CHANGED=true
+          fi
+
+          echo "bazel=$BAZEL_CHANGED" >> $GITHUB_OUTPUT
+          echo "cmake=$CMAKE_CHANGED" >> $GITHUB_OUTPUT
+          echo "rust=$RUST_CHANGED" >> $GITHUB_OUTPUT
+
+          if [ "$BAZEL_CHANGED" = "true" ] || [ "$CMAKE_CHANGED" = "true" ] || [ "$RUST_CHANGED" = "true" ]; then
+            echo "any_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "any_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          echo ""
+          echo "Triggering: bazel=$BAZEL_CHANGED cmake=$CMAKE_CHANGED rust=$RUST_CHANGED"
+
+  trigger-bazel:
+    name: Trigger Bazel Test Repo
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.bazel == 'true'
+    steps:
+      - name: Trigger repository dispatch
+        run: |
+          set -euo pipefail
+
+          echo "Triggering ${{ env.BAZEL_REPO }}..."
+
+          curl --fail-with-body \
+            --silent \
+            --show-error \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.TEST_REPO_DISPATCH_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ env.BAZEL_REPO }}/dispatches" \
+            -d '{"event_type":"workflow-updated","client_payload":{"ref":"${{ github.sha }}","triggered_by":"${{ github.actor }}"}}'
+
+          echo "Dispatch sent to ${{ env.BAZEL_REPO }}"
+
+  trigger-cmake:
+    name: Trigger CMake Test Repo
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.cmake == 'true'
+    steps:
+      - name: Trigger repository dispatch
+        run: |
+          set -euo pipefail
+
+          echo "Triggering ${{ env.CMAKE_REPO }}..."
+
+          curl --fail-with-body \
+            --silent \
+            --show-error \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.TEST_REPO_DISPATCH_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ env.CMAKE_REPO }}/dispatches" \
+            -d '{"event_type":"workflow-updated","client_payload":{"ref":"${{ github.sha }}","triggered_by":"${{ github.actor }}"}}'
+
+          echo "Dispatch sent to ${{ env.CMAKE_REPO }}"
+
+  trigger-rust:
+    name: Trigger Rust Test Repo
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.rust == 'true'
+    steps:
+      - name: Trigger repository dispatch
+        run: |
+          set -euo pipefail
+
+          echo "Triggering ${{ env.RUST_REPO }}..."
+
+          curl --fail-with-body \
+            --silent \
+            --show-error \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.TEST_REPO_DISPATCH_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ env.RUST_REPO }}/dispatches" \
+            -d '{"event_type":"workflow-updated","client_payload":{"ref":"${{ github.sha }}","triggered_by":"${{ github.actor }}"}}'
+
+          echo "Dispatch sent to ${{ env.RUST_REPO }}"
+
+  summary:
+    name: Trigger Summary
+    runs-on: ubuntu-latest
+    needs: [detect-changes, trigger-bazel, trigger-cmake, trigger-rust]
+    if: always() && needs.detect-changes.outputs.any_changed == 'true'
+    steps:
+      - name: Report results
+        run: |
+          echo "## Test Repository Trigger Summary"
+          echo ""
+          echo "| Repository | Triggered | Status |"
+          echo "|------------|-----------|--------|"
+
+          BAZEL_STATUS="${{ needs.trigger-bazel.result }}"
+          CMAKE_STATUS="${{ needs.trigger-cmake.result }}"
+          RUST_STATUS="${{ needs.trigger-rust.result }}"
+
+          # Map results to display
+          get_emoji() {
+            case "$1" in
+              success) echo "passed" ;;
+              skipped) echo "skipped" ;;
+              failure) echo "FAILED" ;;
+              *) echo "$1" ;;
+            esac
+          }
+
+          echo "| Bazel | ${{ needs.detect-changes.outputs.bazel }} | $(get_emoji $BAZEL_STATUS) |"
+          echo "| CMake | ${{ needs.detect-changes.outputs.cmake }} | $(get_emoji $CMAKE_STATUS) |"
+          echo "| Rust | ${{ needs.detect-changes.outputs.rust }} | $(get_emoji $RUST_STATUS) |"
+          echo ""
+          echo "Commit: ${{ github.sha }}"
+          echo "Triggered by: ${{ github.actor }}"
+
+          # Fail if any trigger failed
+          if [ "$BAZEL_STATUS" = "failure" ] || [ "$CMAKE_STATUS" = "failure" ] || [ "$RUST_STATUS" = "failure" ]; then
+            echo ""
+            echo "One or more triggers failed!"
+            exit 1
+          fi

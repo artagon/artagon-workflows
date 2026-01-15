@@ -129,6 +129,55 @@ For each test cycle:
 3. File issues or PRs in this repo when failures trace back to workflow changes
 4. Update this document with new fixtures or language support
 
+## Dedicated Test Repositories
+
+The following repositories are dedicated test consumers that validate the reusable workflows:
+
+| Repository | Tests | Trigger |
+|------------|-------|---------|
+| [artagon-workflow-test-bazel](https://github.com/artagon/artagon-workflow-test-bazel) | `bazel_multi_ci.yml` | On Bazel workflow changes |
+| [artagon-workflow-test-cmake](https://github.com/artagon/artagon-workflow-test-cmake) | `cmake_c_ci.yml`, `cmake_cpp_ci.yml` | On CMake workflow changes |
+| [artagon-workflow-test-rust](https://github.com/artagon/artagon-workflow-test-rust) | Rust workflows (placeholder) | On Rust workflow changes |
+
+### Automatic Triggering
+
+When reusable workflows are updated on `main`, the `trigger_test_repos.yml` workflow automatically dispatches CI runs to the relevant test repositories.
+
+```yaml
+# Triggers on push to main when workflow files change
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/bazel_*.yml'
+      - '.github/workflows/cmake_*.yml'
+      - '.github/workflows/rust_*.yml'
+```
+
+### Manual Triggering
+
+```bash
+# Trigger all test repos
+gh workflow run trigger_test_repos.yml
+
+# Trigger specific repos
+gh workflow run trigger_test_repos.yml -f repos=bazel,cmake
+```
+
+### Setup Requirements
+
+The `trigger_test_repos.yml` workflow requires a `TEST_REPO_DISPATCH_TOKEN` secret with:
+- `repo` scope for the test repositories
+- Permission to trigger `repository_dispatch` events
+
+Test repositories must have `repository_dispatch` configured:
+
+```yaml
+on:
+  repository_dispatch:
+    types: [workflow-updated]
+```
+
 ## CI Validation Workflows
 
 The repository includes automated validation:
@@ -137,6 +186,7 @@ The repository includes automated validation:
 - **test_security.yml** - Security checks
 - **codeql.yml** - CodeQL analysis
 - **copilot-setup-steps.yml** - Copilot environment validation
+- **trigger_test_repos.yml** - Automatic test repo triggering
 
 ## Test Fixtures
 
