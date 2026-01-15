@@ -41,40 +41,56 @@
 **Acceptance**: CMake CI jobs pass
 **Status**: COMPLETED
 
-## 5. Fix Rust Test Project
+## 5. Create Rust CI Workflow (rust_ci.yml)
 
-- [ ] 5.1 Verify Cargo.toml is valid
-- [ ] 5.2 Ensure src/lib.rs or src/main.rs exists
-- [ ] 5.3 Verify cargo build/test work
+- [ ] 5.1 Create rust_ci.yml with workflow_call trigger
+- [ ] 5.2 Add validate-inputs job with input validation
+- [ ] 5.3 Add build-test job with cargo build/test
+- [ ] 5.4 Add clippy job for linting
+- [ ] 5.5 Add rustfmt job for format checking
+- [ ] 5.6 Add coverage job with cargo-tarpaulin
+- [ ] 5.7 Add Nix flake detection support
+- [ ] 5.8 Add Cargo caching
+
+**Acceptance**: rust_ci.yml is callable from other repos
+**Status**: PENDING
+
+## 6. Fix Rust Test Project
+
+- [ ] 6.1 Verify Cargo.toml is valid
+- [ ] 6.2 Ensure src/lib.rs exists with tests
+- [ ] 6.3 Ensure src/main.rs exists
+- [ ] 6.4 Update CI to call rust_ci.yml reusable workflow
+- [ ] 6.5 Add test configurations (stable, nightly)
 
 **Acceptance**: Rust CI jobs pass
-**Status**: N/A - No rust_ci.yml workflow exists yet (placeholder project)
+**Status**: PENDING
 
-## 6. Update Test Repo CI Configurations
+## 7. Update Test Repo CI Configurations
 
-- [x] 6.1 Update artagon-workflow-test-bazel ci.yml to use valid targets
-- [x] 6.2 Remove references to non-existent targets
-- [x] 6.3 Configure appropriate bazel-configs for testing
+- [x] 7.1 Update artagon-workflow-test-bazel ci.yml to use valid targets
+- [x] 7.2 Remove references to non-existent targets
+- [x] 7.3 Configure appropriate bazel-configs for testing
 
 **Acceptance**: CI configuration matches actual project structure
 **Status**: COMPLETED
 
-## 7. Cost Reduction (Added)
+## 8. Cost Reduction
 
-- [x] 7.1 Remove macOS from CI workflows
-- [x] 7.2 Remove Windows from CI workflows
-- [x] 7.3 Keep release workflows with optional macOS/Windows builds
+- [x] 8.1 Remove macOS from CI workflows
+- [x] 8.2 Remove Windows from CI workflows
+- [x] 8.3 Keep release workflows with optional macOS/Windows builds
 
 **Acceptance**: CI only runs on ubuntu-latest
 **Status**: COMPLETED
 
-## 8. Verification
+## 9. Verification
 
-- [x] 8.1 Trigger Bazel test repo CI and verify all jobs pass
-- [x] 8.2 Trigger CMake test repo CI and verify all jobs pass
-- [ ] 8.3 Trigger Rust test repo CI and verify pass (N/A - no workflow)
-- [x] 8.4 Run trigger_test_repos.yml and verify all dispatches succeed
-- [ ] 8.5 Monitor scheduled runs for 3 days
+- [x] 9.1 Trigger Bazel test repo CI and verify all jobs pass
+- [x] 9.2 Trigger CMake test repo CI and verify all jobs pass
+- [ ] 9.3 Trigger Rust test repo CI and verify pass
+- [x] 9.4 Run trigger_test_repos.yml and verify all dispatches succeed
+- [ ] 9.5 Monitor scheduled runs for 3 days
 
 **Acceptance**: All test repos consistently pass
-**Status**: MOSTLY COMPLETE (monitoring pending)
+**Status**: IN PROGRESS (Rust workflow pending)

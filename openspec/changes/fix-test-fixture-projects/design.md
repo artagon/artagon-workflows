@@ -30,10 +30,11 @@ artagon-workflow-test-cmake/
     └── test_hello.c             # Test source
 
 artagon-workflow-test-rust/
-├── .github/workflows/ci.yml     # Placeholder for rust_ci.yml
+├── .github/workflows/ci.yml     # Calls rust_ci.yml
 ├── Cargo.toml
 └── src/
-    └── lib.rs                   # Minimal Rust library
+    ├── lib.rs                   # Minimal Rust library
+    └── main.rs                  # Binary entry point
 ```
 
 ## Component Design
@@ -89,6 +90,66 @@ Minimal C/C++ project with:
 - At least one executable target
 - At least one test target
 - Coverage-compatible structure
+
+### 5. Rust CI Workflow (rust_ci.yml)
+
+Create reusable Rust CI workflow with:
+
+**Inputs**:
+```yaml
+inputs:
+  rust-version:
+    description: 'Rust toolchain version'
+    type: string
+    default: 'stable'
+  enable-clippy:
+    description: 'Run clippy lints'
+    type: boolean
+    default: true
+  enable-rustfmt:
+    description: 'Check formatting'
+    type: boolean
+    default: true
+  enable-coverage:
+    description: 'Generate code coverage'
+    type: boolean
+    default: true
+  cargo-features:
+    description: 'Cargo features to enable'
+    type: string
+    default: ''
+```
+
+**Jobs**:
+1. `validate-inputs` - Validate workflow inputs
+2. `build-test` - Build and run tests on ubuntu-latest
+3. `clippy` - Run clippy lints (if enabled)
+4. `rustfmt` - Check formatting (if enabled)
+5. `coverage` - Generate coverage with cargo-tarpaulin (if enabled)
+
+**Key Features**:
+- Nix flake detection (like other workflows)
+- Cargo caching for faster builds
+- Support for workspace projects
+- MSRV (Minimum Supported Rust Version) testing option
+
+### 6. Rust Test Project
+
+Update test repo CI to call reusable workflow:
+```yaml
+jobs:
+  test-stable:
+    uses: artagon/artagon-workflows/.github/workflows/rust_ci.yml@main
+    with:
+      rust-version: 'stable'
+    secrets: inherit
+
+  test-nightly:
+    uses: artagon/artagon-workflows/.github/workflows/rust_ci.yml@main
+    with:
+      rust-version: 'nightly'
+    secrets: inherit
+```
 
 ## Security Considerations
 

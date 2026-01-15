@@ -8,6 +8,7 @@ The test repositories (artagon-workflow-test-bazel, artagon-workflow-test-cmake,
 2. **Artifact naming conflicts** - Multiple matrix jobs upload artifacts with the same name
 3. **Invalid Bazel query syntax** - Space-separated targets causing query parse errors
 4. **Missing BUILD files** - No `src/` package defined in Bazel test project
+5. **Missing Rust CI workflow** - No `rust_ci.yml` reusable workflow exists, so Rust test project cannot use reusable workflow pattern
 
 ## Impact
 
@@ -24,6 +25,8 @@ Fix the test fixture projects to have proper project structure that exercises th
 2. **CMake test projects**: Ensure CMakeLists.txt and source files exist
 3. **Artifact naming**: Fix matrix artifact uploads to use unique names
 4. **Query syntax**: Fix Bazel query to handle multiple targets correctly
+5. **Rust CI workflow**: Create `rust_ci.yml` reusable workflow with build, test, clippy, rustfmt, and coverage jobs
+6. **Rust test project**: Update CI to call the new reusable workflow
 
 ## Success Criteria
 
