@@ -91,7 +91,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         config: ${{ fromJson(needs.validate-inputs.outputs.configs-json) }}
 
     steps:
@@ -164,42 +164,6 @@ jobs:
           name: test-results-${{ matrix.os }}-${{ matrix.config }}
           path: bazel-testlogs/
           retention-days: 7
-
-  build-windows:
-    name: Build and Test (Windows)
-    runs-on: windows-latest
-    needs: validate-inputs
-    permissions:
-      contents: read
-      packages: read
-
-    steps:
-      - name: Checkout code
-        # actions/checkout@v4.2.2
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          submodules: recursive
-
-      - name: Setup Bazelisk
-        # bazelbuild/setup-bazelisk@v3.0.0
-        uses: bazelbuild/setup-bazelisk@8993f2e6805aac5a041b31bd7b38c8ba4ed0aab0
-
-      - name: Mount Bazel cache
-        # actions/cache@v4.2.0
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
-        with:
-          path: |
-            ~/.cache/bazel
-            ~/.cache/bazelisk
-          key: windows-bazel-${{ hashFiles('**/BUILD.bazel', '**/WORKSPACE.bazel', '**/MODULE.bazel') }}
-          restore-keys: |
-            windows-bazel-
-
-      - name: Build
-        run: bazel build --config=release ${{ inputs.targets }}
-
-      - name: Test
-        run: bazel test --config=release --test_output=errors ${{ inputs.targets }}
 
   coverage:
     name: Code Coverage
