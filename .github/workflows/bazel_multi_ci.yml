@@ -100,16 +100,16 @@ jobs:
 
       - name: Install Nix
         if: steps.check-nix.outputs.has_nix == 'true'
-        # cachix/install-nix-action@v30
-        uses: cachix/install-nix-action@08dcb3a5e62fa31e2eb71ca1c1a4ae1b42a8f4b4
+        # cachix/install-nix-action@v31.9.0
+        uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
       - name: Setup Bazelisk (non-Nix)
         if: steps.check-nix.outputs.has_nix == 'false'
-        # bazelbuild/setup-bazelisk@v3.0.1
-        uses: bazelbuild/setup-bazelisk@b63ef97e907d9f0dc8c6f99a88a89f63d533addc
+        # bazelbuild/setup-bazelisk@v3.0.0
+        uses: bazelbuild/setup-bazelisk@8993f2e6805aac5a041b31bd7b38c8ba4ed0aab0
 
       - name: Mount Bazel cache
         # actions/cache@v4.2.0
@@ -169,8 +169,8 @@ jobs:
           submodules: recursive
 
       - name: Setup Bazelisk
-        # bazelbuild/setup-bazelisk@v3.0.1
-        uses: bazelbuild/setup-bazelisk@b63ef97e907d9f0dc8c6f99a88a89f63d533addc
+        # bazelbuild/setup-bazelisk@v3.0.0
+        uses: bazelbuild/setup-bazelisk@8993f2e6805aac5a041b31bd7b38c8ba4ed0aab0
 
       - name: Mount Bazel cache
         # actions/cache@v4.2.0
@@ -215,16 +215,16 @@ jobs:
 
       - name: Install Nix
         if: steps.check-nix.outputs.has_nix == 'true'
-        # cachix/install-nix-action@v30
-        uses: cachix/install-nix-action@08dcb3a5e62fa31e2eb71ca1c1a4ae1b42a8f4b4
+        # cachix/install-nix-action@v31.9.0
+        uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
       - name: Setup Bazelisk (non-Nix)
         if: steps.check-nix.outputs.has_nix == 'false'
-        # bazelbuild/setup-bazelisk@v3.0.1
-        uses: bazelbuild/setup-bazelisk@b63ef97e907d9f0dc8c6f99a88a89f63d533addc
+        # bazelbuild/setup-bazelisk@v3.0.0
+        uses: bazelbuild/setup-bazelisk@8993f2e6805aac5a041b31bd7b38c8ba4ed0aab0
 
       - name: Install lcov
         run: sudo apt-get update && sudo apt-get install -y lcov
@@ -301,8 +301,8 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Setup Bazelisk
-        # bazelbuild/setup-bazelisk@v3.0.1
-        uses: bazelbuild/setup-bazelisk@b63ef97e907d9f0dc8c6f99a88a89f63d533addc
+        # bazelbuild/setup-bazelisk@v3.0.0
+        uses: bazelbuild/setup-bazelisk@8993f2e6805aac5a041b31bd7b38c8ba4ed0aab0
 
       - name: Query targets
         run: |

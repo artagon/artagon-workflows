@@ -149,8 +149,8 @@ jobs:
 
       - name: Install Nix
         if: steps.check-nix.outputs.has_nix == 'true'
-        # cachix/install-nix-action@v30
-        uses: cachix/install-nix-action@08dcb3a5e62fa31e2eb71ca1c1a4ae1b42a8f4b4
+        # cachix/install-nix-action@v31.9.0
+        uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
